@@ -86,14 +86,14 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | 12 **Mapa o croquis** | ❌ | Solo un campo URL. Decisión 3: imagen y mapa dibujable |
 | 13 **Resumen de las acciones** (cronológico) | 🟡 | La bitácora existe, pero **la hoja imprimible del 201 no la incluye** (es la página 3 del formulario) |
 | 14 Organización actual (**historial secuencial**) | 🟡 | Snapshot solo al crear el 201. El manual pide registrar cada cambio de estructura |
-| Un 201 **por periodo** (= por mando, decisión 24) | ❌ | El índice `uq_form201_active_per_emergency` solo filtra `is_deleted = false`: permite **un único 201 en toda la vida de la emergencia**, aunque esté finalizado. Debe restringir solo los 201 **no finalizados**, para que el nuevo CI abra el suyo tras el traspaso |
+| Un 201 **por periodo** (= por mando, decisión 24) | ✅ | Índice `uq_form201_open_per_emergency`: como máximo un 201 **abierto**. Tras el traspaso el nuevo CI inicia el suyo; los anteriores se consultan e imprimen desde el selector de mandos (`/print/form201/:id?form=<id>`) |
 | El 201 completo es obligatorio para transferir el mando | 🟡 | Se exige *finalizado*; no se validan los campos mínimos (1-6, 10, 11) |
 
 ### 3.2 Formulario SCI-207
 
 | Campo o regla del manual | Estado | Detalle |
 |:---|:-:|:---|
-| 2 Lugar de registro: **ACV o UM** | 🟡 | Texto libre. Decisión 25: ACV/UM por defecto, editable |
+| 2 Lugar de registro: **ACV o UM** | 🟡 | Texto libre. Si llega vacío el backend usa "Área de Concentración de Víctimas (ACV)" (antes daba 500 por NOT NULL). Falta precargarlo y ofrecer ACV/UM en la web (decisión 25) |
 | 3-5 Nombre, sexo, edad (estimada) | ✅ | Admite "NN" y "No determinado" |
 | 6 Clasificación por colores | ✅ | Con re-evaluaciones e historial: el manual lo sugiere y está implementado |
 | 7 **Lugar de traslado** | ❌ | No existe. Decisión 27: tabla de centros de salud creada sobre la marcha, con autocompletado |
@@ -113,7 +113,7 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | Un único CI activo | ✅ | Índice único parcial en la BD |
 | Comando Unificado (varios CI) | ❌ | No contemplado. No fue pedido; anotado para decidir |
 | Transferencia de mando formal y registrada | ✅ | Transaccional, con entrada en la bitácora |
-| Transferir exige **F201 y F207 finalizados** + flujo "finalizar todo" | ❌ | Solo exige el F201 (decisión 6) |
+| Transferir exige **F201 y F207 finalizados** + flujo "finalizar todo" | ✅ | `GET /emergency/:id/forms/pending` y `POST /emergency/:id/forms/finalize-all` (CI o manager+, transaccional, con entrada en la bitácora). El modal lista los códigos abiertos, advierte y exige confirmar antes de cerrar y traspasar |
 | Checklist de transferencia del manual | ❌ | No hay checklist ni confirmación de quien recibe |
 | Catálogo de cargos del manual | 🟡 | 35 cargos, con terminología ICS ("Director de Rama", "Equipo de Ataque", "Unidad de Compras/Transporte"). Faltan **EAE**, **EACV**, CROA, helibase y helipunto, registradores. Incluye entradas que no son cargos SCI ("Rescatista", "Paramédico", "Bombero", "Voluntario") |
 | Jerarquía con un único superior | 🟡 | Los cargos tienen nivel y peso, pero no superior (sin `parentId`) |
@@ -131,6 +131,9 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | B3 | KPI "víctimas" del dashboard siempre en 0 (`victimsCount` nunca llega) | Dato falso en pantalla | P2 |
 | B4 | `DELETE /resource/:id` no restituye el stock | Inventario descuadrado | **P0** (ver S3) |
 | B5 | La hoja imprimible del 201 no incluye el resumen de acciones | Formulario incompleto respecto al oficial | P1 |
+| B8 | El buscador de personal usaba `GET /user` (solo manager+): un CI con rol `basic` no podía asignar personal ni traspasar el mando desde la web | Flujos del CI bloqueados | ✅ Resuelto: `GET /user/directory` para cualquier usuario autenticado, solo con nombre, apellido, grado y disponibilidad (sin correo ni rol) |
+| B9 | Crear un 207 sin lugar de registro devolvía 500 (el DTO lo admite opcional, la columna es NOT NULL) | El móvil u otro cliente no podía abrir un 207 | ✅ Resuelto: ACV por defecto |
+| B10 | Los modales tenían `aria-labelledby` con el título como id (con espacios), así que el diálogo no tenía nombre accesible | Lectores de pantalla y pruebas | ✅ Resuelto: id único por modal |
 
 ## 5. Funcionalidades faltantes en la web
 
@@ -192,7 +195,7 @@ Deuda técnica relevante:
 
 **P1 — Cierre de la Etapa 1 conforme al manual y a las decisiones:**
 5. ✅ Fechas y horas en UTC con zona horaria de la institución (B1, B2, B6, B7).
-6. Traspaso de mando: exigir F201 y F207 finalizados, crear el flujo "finalizar todo" y permitir que el nuevo CI abra **su propio F201** (cambiar el índice único a "un 201 no finalizado por emergencia").
+6. ✅ Traspaso de mando: exige F201 y F207 finalizados, flujo "finalizar todo" con advertencias, y el nuevo CI abre **su propio F201** (B8, B9 y B10 aparecieron al probarlo de punta a punta).
 7. 207: destino del traslado con **tabla de centros de salud y autocompletado**, medio de traslado enumerado, regla "ambos o ninguno", lugar de registro ACV/UM editable y registro restringido a EACV, LUMED, CI y `manager`/`admin`.
 8. Catálogo de cargos alineado al manual: EAE, EACV, terminología LAC, sin entradas que no son cargos. Migración de datos de los cargos existentes.
 9. Croquis del 201: imagen; luego el mapa dibujable.
