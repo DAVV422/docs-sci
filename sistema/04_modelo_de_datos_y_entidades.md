@@ -106,7 +106,7 @@ erDiagram
 - `abbreviation`: `varchar(20)` (nullable) — Abreviatura estándar (ej. `CI`, `JOP`, `EQ-ATK`).
 - `level`: `int` — Nivel vertical jerárquico (1 a 5).
 - `weight`: `decimal(5,2)` — Peso de ordenamiento horizontal en el organigrama.
-- `system_name`: `varchar(100)` (Unique, nullable) — Clave programática (ej. `incident_commander`, `medical_unit_leader`, `attack_team`).
+- `system_name`: `varchar(100)` (Unique, nullable) — Clave programática (ej. `incident_commander`, `medical_unit_leader`, `intervention_team_member`). El catálogo vive en `back-sci/src/sci_module/charges/sci-charge-catalog.ts` y se sincroniza al arrancar.
 
 #### `AttendEntity` (`table: attend`)
 - `id`: UUID (PK, hereda de BaseEntity).

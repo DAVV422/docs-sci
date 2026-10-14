@@ -115,7 +115,7 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | Transferencia de mando formal y registrada | ✅ | Transaccional, con entrada en la bitácora |
 | Transferir exige **F201 y F207 finalizados** + flujo "finalizar todo" | ✅ | `GET /emergency/:id/forms/pending` y `POST /emergency/:id/forms/finalize-all` (CI o manager+, transaccional, con entrada en la bitácora). El modal lista los códigos abiertos, advierte y exige confirmar antes de cerrar y traspasar |
 | Checklist de transferencia del manual | ❌ | No hay checklist ni confirmación de quien recibe |
-| Catálogo de cargos del manual | 🟡 | 35 cargos, con terminología ICS ("Director de Rama", "Equipo de Ataque", "Unidad de Compras/Transporte"). Faltan **EAE**, **EACV**, CROA, helibase y helipunto, registradores. Incluye entradas que no son cargos SCI ("Rescatista", "Paramédico", "Bombero", "Voluntario") |
+| Catálogo de cargos del manual | ✅ | 43 cargos con la terminología y siglas del manual (Anexo A): EAE, EACV, CROA, helibase, helipunto, registrador, radioperador y operador de ambulancia incluidos. Fuente única en `back-sci/src/sci_module/charges/sci-charge-catalog.ts`, sincronizada al arrancar: renombra en el mismo registro (las asignaciones se conservan), fusiona duplicados y retira lo que no son cargos (Rescatista, Paramédico, Bombero, Voluntario). Los cargos que cree un administrador no se tocan |
 | Jerarquía con un único superior | 🟡 | Los cargos tienen nivel y peso, pero no superior (sin `parentId`) |
 | Periodo Inicial (1-4 h) y Periodos Operacionales (12-24 h) | ➖ | **Fuera de esta etapa** (decisión 24): el traspaso de mando marca el cambio de periodo |
 | Reunión de Evaluación | ➖ | Fuera de esta etapa (decisión 24) |
@@ -197,12 +197,12 @@ Deuda técnica relevante:
 5. ✅ Fechas y horas en UTC con zona horaria de la institución (B1, B2, B6, B7).
 6. ✅ Traspaso de mando: exige F201 y F207 finalizados, flujo "finalizar todo" con advertencias, y el nuevo CI abre **su propio F201** (B8, B9 y B10 aparecieron al probarlo de punta a punta).
 7. ✅ 207: destino del traslado con **tabla de centros de salud y autocompletado**, medio de traslado enumerado, regla "ambos o ninguno", lugar de registro ACV/UM editable y registro restringido a EACV, LUMED, CI y `manager`/`admin`.
-8. Catálogo de cargos alineado al manual: EAE, EACV, terminología LAC, sin entradas que no son cargos. Migración de datos de los cargos existentes.
+8. ✅ Catálogo de cargos alineado al manual: EAE, EACV, terminología LAC, sin entradas que no son cargos. Migración de datos de los cargos existentes (aplicada también en la base de desarrollo).
 9. Croquis del 201: imagen; luego el mapa dibujable.
 10. Hoja del 201 con resumen de acciones, hora de preparación y objetivos como lista.
 11. Pantallas: editar emergencia y recuperación de contraseña.
 12. Storage abstraído (disco hoy, S3 mañana) para audios e imágenes.
-13. Seguridad de producción: helmet, Swagger, dependencias.
+13. Seguridad de producción: helmet, Swagger, dependencias. Proteger o deshabilitar `GET /seed/all` y `GET /seed/charges`, que hoy no exigen sesión (con el catálogo sincronizado al arrancar, `/seed/charges` ya no hace falta en producción).
 
 **P2:**
 - KPI de víctimas.

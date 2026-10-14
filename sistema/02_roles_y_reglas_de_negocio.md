@@ -103,7 +103,7 @@ El **Comandante del Incidente** es la máxima autoridad táctica en el lugar del
 
 ### 4.4 Asignación de Personal y Rol por Defecto
 
-- Cuando se asigna personal a una emergencia (`POST /api/attend`) sin especificar un cargo particular en la interfaz, el sistema asigna automáticamente el cargo **Equipo de Ataque (`EQ-ATK` / `attack_team`)**, correspondiente al Nivel 5 del organigrama.
+- Cuando se asigna personal a una emergencia (`POST /api/attend`) sin especificar un cargo particular en la interfaz, el sistema asigna automáticamente el cargo **Integrante de Equipo de Intervención (`EI` / `intervention_team_member`)**, correspondiente al Nivel 5 del organigrama.
 - **Unicidad de Mando**: En una misma emergencia **solo puede existir un Comandante del Incidente activo a la vez**. Para nombrar a un nuevo CI, se debe desactivar o reasignar la asignación anterior.
 
 ---

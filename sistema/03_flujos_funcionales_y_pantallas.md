@@ -110,7 +110,7 @@ Este documento es una guía práctica de diseño e implementación para los desa
 2. **Modal "Añadir Miembro al Incidente"**:
    - Selector de usuario (consume `GET /api/user`).
    - Selector de Cargo SCI (consume `GET /api/charge`, ordenado por nivel y peso).
-   - Valor por defecto si no se selecciona cargo: **Equipo de Ataque (`EQ-ATK`)**.
+   - Valor por defecto si no se selecciona cargo: **Integrante de Equipo de Intervención (`EI`)**.
 3. **Acción "Traspasar Mando de CI"**:
    - Cambia la asignación del cargo CI a otro miembro activo previa confirmación.
 
