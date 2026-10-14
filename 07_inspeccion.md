@@ -83,7 +83,7 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | 8-9 Rutas de ingreso y egreso | ✅ | Texto |
 | 10 Mensaje de seguridad | ✅ | |
 | 11 Comandante del incidente | ✅ | Derivado del CI activo |
-| 12 **Mapa o croquis** | ❌ | Solo un campo URL. Decisión 3: imagen y mapa dibujable |
+| 12 **Mapa o croquis** | ✅ | Imagen del croquis (JPG/PNG/WebP hasta 10 MB, firma del archivo verificada, se sirve solo con sesión) y mapa de situación dibujable: perímetro de seguridad y símbolos del Anexo D (PC, E, ACV, B, C, H, H1, origen, peligro, primeros auxilios, agua, recurso), con el incidente, el PC y el E de la emergencia como referencia y el norte arriba. Editable mientras el 201 esté abierto; en la hoja imprimible va en página aparte (decisión 3) |
 | 13 **Resumen de las acciones** (cronológico) | 🟡 | La bitácora existe, pero **la hoja imprimible del 201 no la incluye** (es la página 3 del formulario) |
 | 14 Organización actual (**historial secuencial**) | 🟡 | Snapshot solo al crear el 201. El manual pide registrar cada cambio de estructura |
 | Un 201 **por periodo** (= por mando, decisión 24) | ✅ | Índice `uq_form201_open_per_emergency`: como máximo un 201 **abierto**. Tras el traspaso el nuevo CI inicia el suyo; los anteriores se consultan e imprimen desde el selector de mandos (`/print/form201/:id?form=<id>`) |
@@ -143,8 +143,8 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | Recuperación de contraseña | P1 | Solo existe la plantilla de correo |
 | Administración del catálogo de cargos SCI (admin) | P2 | El backend lo soporta; no hay pantalla |
 | Centro de notificaciones (incluidos los conflictos de sincronización) | P2 | El backend genera notificaciones; la web no las muestra |
-| Croquis del 201 (imagen + mapa dibujable) | P1 | Decisión 3 |
-| Flujo "finalizar todo y traspasar el mando" | P1 | Decisión 6 |
+| Croquis del 201 (imagen + mapa dibujable) | ✅ | Decisión 3 |
+| Flujo "finalizar todo y traspasar el mando" | ✅ | Decisión 6 |
 | Reportes y estadísticas operativas | P2 | Falta definir cuáles (pregunta 6) |
 
 ## 6. Pruebas y calidad
@@ -198,10 +198,10 @@ Deuda técnica relevante:
 6. ✅ Traspaso de mando: exige F201 y F207 finalizados, flujo "finalizar todo" con advertencias, y el nuevo CI abre **su propio F201** (B8, B9 y B10 aparecieron al probarlo de punta a punta).
 7. ✅ 207: destino del traslado con **tabla de centros de salud y autocompletado**, medio de traslado enumerado, regla "ambos o ninguno", lugar de registro ACV/UM editable y registro restringido a EACV, LUMED, CI y `manager`/`admin`.
 8. ✅ Catálogo de cargos alineado al manual: EAE, EACV, terminología LAC, sin entradas que no son cargos. Migración de datos de los cargos existentes (aplicada también en la base de desarrollo).
-9. Croquis del 201: imagen; luego el mapa dibujable.
+9. ✅ Croquis del 201: imagen y mapa dibujable (sin la Drawing Library de Google, que ya no está disponible).
 10. Hoja del 201 con resumen de acciones, hora de preparación y objetivos como lista.
 11. Pantallas: editar emergencia y recuperación de contraseña.
-12. Storage abstraído (disco hoy, S3 mañana) para audios e imágenes.
+12. Storage abstraído (disco hoy, S3 mañana) para audios e imágenes (perfil y croquis ya pasan por `IStorageService`; los audios todavía no). Separar la carpeta de datos del E2E: hoy sus croquis caen en `data/uploads` del entorno de desarrollo.
 13. Seguridad de producción: helmet, Swagger, dependencias. Proteger o deshabilitar `GET /seed/all` y `GET /seed/charges`, que hoy no exigen sesión (con el catálogo sincronizado al arrancar, `/seed/charges` ya no hace falta en producción).
 
 **P2:**
