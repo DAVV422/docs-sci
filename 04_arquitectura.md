@@ -49,6 +49,7 @@ La carpeta raíz `C:\Proyectos\SCI` no es un repositorio git. Dónde se versiona
 - **Permisos en dos capas:** rol global (`basic` a `suadmin`) y cargo SCI por emergencia (CI, Líder Médico, personal asignado) mediante `EmergencyAccessService`. El front replica las reglas solo para mostrar u ocultar acciones; el backend siempre las vuelve a exigir.
 - **Tiempo real por invalidación:** el backend emite *qué cambió* después del commit y los clientes vuelven a consultar por HTTP. Ningún dato viaja por el socket sin el serializador de la API.
 - **Idempotencia offline:** cada registro creado en cliente lleva `clientGeneratedId` (UUID).
+- **Fechas:** todo instante se guarda en **UTC** (el proceso Node se fija en UTC). La zona de la institución (`APP_TIMEZONE`, `America/La_Paz`) se publica en `GET /api/config/public` y se usa solo para mostrar y para agrupar reportes. Cada emergencia guarda su `timezone`. Las fechas de calendario (F201, F207) no se convierten.
 - **Rate limiting por IP:** 300 req/min global y 5-10 req/min en autenticación, configurable con `THROTTLE_LIMIT` y `THROTTLE_AUTH_LIMIT`.
 - **Formularios imprimibles** generados en el navegador (vista de impresión / guardar como PDF), sin generación de PDF en el servidor.
 - **Almacenamiento de archivos** (audios, imágenes del croquis): debe pasar por una interfaz de storage con un adaptador de disco hoy y uno de S3 mañana. Despliegue en un VPS con HTTPS y respaldos.

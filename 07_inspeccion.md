@@ -124,8 +124,10 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 
 | # | Bug | Impacto | Prioridad |
 |:-:|:---|:---|:-:|
-| B1 | Fecha calculada en UTC en el front (`toISOString().split('T')[0]`) al crear emergencias y asignar personal | Desde las 20:00 en Bolivia se registra el día siguiente | **P1** |
-| B2 | Horas de la bitácora automática con `getHours()` del proceso Node | En un VPS en UTC quedan +4 h. Mitigación: `TZ=America/La_Paz` en el despliegue; mejor guardar `timestamptz` | **P1** |
+| B1 | Fecha calculada en UTC en el front (`toISOString().split('T')[0]`) al crear emergencias y asignar personal | Desde las 20:00 en Bolivia se registra el día siguiente | ✅ Resuelto: todo se guarda en UTC y la web convierte a la zona de la institución |
+| B2 | Horas de la bitácora automática con `getHours()` del proceso Node | En un VPS en UTC quedan +4 h | ✅ Resuelto: el proceso se fija en UTC y la zona de la institución (`APP_TIMEZONE`) se usa solo para mostrar y reportar |
+| B6 | El listado de emergencias no traía el usuario de las asignaciones: `findCommanderName` lanzaba una excepción y la fila quedaba sin Comandante ni Fecha/Hora | Columna Comandante del listado siempre rota | ✅ Resuelto |
+| B7 | Fechas de calendario (F201, F207) mostradas con `DatePipe`, que las interpreta como medianoche UTC | `2026-10-03` se veía `02/10/2026` en UTC-4 | ✅ Resuelto |
 | B3 | KPI "víctimas" del dashboard siempre en 0 (`victimsCount` nunca llega) | Dato falso en pantalla | P2 |
 | B4 | `DELETE /resource/:id` no restituye el stock | Inventario descuadrado | **P0** (ver S3) |
 | B5 | La hoja imprimible del 201 no incluye el resumen de acciones | Formulario incompleto respecto al oficial | P1 |
@@ -189,7 +191,7 @@ Deuda técnica relevante:
 4. Límites de tipo y tamaño en la subida de audio y actualización de `multer`.
 
 **P1 — Cierre de la Etapa 1 conforme al manual y a las decisiones:**
-5. Fechas y horas: corrección del front (B1) y `TZ` del servidor (B2).
+5. ✅ Fechas y horas en UTC con zona horaria de la institución (B1, B2, B6, B7).
 6. Traspaso de mando: exigir F201 y F207 finalizados, crear el flujo "finalizar todo" y permitir que el nuevo CI abra **su propio F201** (cambiar el índice único a "un 201 no finalizado por emergencia").
 7. 207: destino del traslado con **tabla de centros de salud y autocompletado**, medio de traslado enumerado, regla "ambos o ninguno", lugar de registro ACV/UM editable y registro restringido a EACV, LUMED, CI y `manager`/`admin`.
 8. Catálogo de cargos alineado al manual: EAE, EACV, terminología LAC, sin entradas que no son cargos. Migración de datos de los cargos existentes.
