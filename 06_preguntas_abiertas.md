@@ -26,15 +26,13 @@
 | 20 | Infraestructura | **VPS** con HTTPS y respaldos. Audios en el servidor, pero el almacenamiento debe quedar **listo para migrar a S3** |
 | 21 | Documentación | Unificar las copias duplicadas de `docs/sistema` en una sola fuente |
 | 22 | Flujo de git | Commits **directo en `main`**, con Conventional Commits. Front: `github.com/DAVV422/front-sci-emergyai` |
-| 23 | Versionado de `docs/` | **Repositorio propio** para esta carpeta. Las copias de `docs/sistema` en los repos se reemplazan por un enlace a él |
+| 23 | Versionado de `docs/` | **Repositorio propio**: `github.com/DAVV422/docs-sci`. Las copias de `docs/sistema` en los repos se reemplazan por un enlace a él |
 | 24 | Periodos operacionales | **No se modelan en esta etapa.** Un **traspaso de mando cierra el periodo**: se finalizan los formularios y el nuevo CI inicia **su propio F201**. Sin entidad Periodo ni Reunión de Evaluación |
 | 25 | Lugar de registro del 207 | Por defecto **ACV** o **UM**, pero **editable**: si no existe ACV ni UM, se escribe otro lugar |
-| 26 | Quién registra en el 207 | Los **encargados** (Encargado del ACV y Líder de la Unidad Médica) y el **Comandante del Incidente** |
+| 26 | Quién registra en el 207 | Los **encargados** (Encargado del ACV y Líder de la Unidad Médica), el **Comandante del Incidente** y los roles globales **`manager`/`admin`** (para correcciones desde la central; el autor queda en el log) |
 | 27 | Destino del traslado | Se crea **sobre la marcha** desde el 207 y se guarda en una **tabla de centros de salud**, que luego sirve para **sugerencias y autocompletado** |
 | 28 | Reportes | Base: emergencias (atendidas, activas, reportadas, por tipo…) y participación del personal (emergencias, horas, cargos…). Propuesta completa en [08](./08_reportes_propuesta.md), pendiente de validar |
 
 ## Preguntas abiertas
 
-1. **Remoto del repositorio de documentación:** ¿qué nombre le damos en GitHub (por ejemplo `DAVV422/sci-docs`)? Mientras tanto queda como repositorio git local en `C:\Proyectos\SCI\docs`.
-2. **Roles globales en el 207:** la decisión 26 deja el registro a los encargados y al CI. ¿Un `manager`/`admin` de la central también puede registrar o corregir, como hoy? Recomiendo que sí, para correcciones posteriores, quedando el autor registrado en el log.
-3. **Reportes:** validar o recortar la propuesta de [08](./08_reportes_propuesta.md) y elegir los primeros a construir.
+1. **Reportes:** validar o recortar la propuesta de [08](./08_reportes_propuesta.md) y elegir los primeros a construir.

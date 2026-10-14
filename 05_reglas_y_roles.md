@@ -27,8 +27,10 @@ Resumen operativo. La fuente detallada es `back-sci/docs/sistema/02_roles_y_regl
 | Asignar CI sin ceremonia | | | | ✅ | ✅ |
 | Traspasar el mando de CI | ✅ | | | | ✅ |
 | Crear y finalizar planillas F207 | ✅ | ✅ | | | ✅ |
-| Registrar triage, bitácora y despachar recursos | ✅ | ✅ | ✅ | | ✅ |
-| Ver víctimas de la emergencia | ✅ | ✅ | ✅ | ✅ | ✅ (`advanced`+ también). Un `basic` no asignado no las ve: *decisión del 2026-10-14, pendiente de implementar* |
+| Registrar bitácora y despachar recursos | ✅ | ✅ | ✅ | | ✅ |
+| Registrar y corregir pacientes del 207 (también el EACV) | ✅ | ✅ | | | ✅ |
+| Ver pacientes de la emergencia | ✅ | ✅ | ✅ | ✅ | ✅. Los `advanced` también; un `basic` solo si participó (decisión 18) |
+| Cambiar estado, editar la emergencia, editar o anular despachos | ✅ | | | | ✅ |
 | Devolver recursos al inventario | ✅ | | | | ✅ |
 | Gestionar el catálogo de inventario | | | | | ✅ |
 

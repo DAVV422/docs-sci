@@ -67,7 +67,7 @@ Estos dos campos son independientes entre sí y no deben confundirse en la inter
 Cualquier usuario con sesión activa que esté **asignado al personal de una emergencia** (`AttendEntity` activa), sin importar si su rol de sistema es `basic`, `advanced`, `manager`, `admin` o `suadmin`, cuenta con los siguientes permisos en ese incidente:
 
 1. **Bitácora y Notas de Voz (`Action`)**: Puede registrar acciones, eventos y notas de voz con audio en la línea de tiempo del incidente.
-2. **Registro de Víctimas (`Victim` & `Registration`)**: Puede registrar los datos básicos de personas lesionadas y asentar evaluaciones de triage START/SALT dentro de las planillas del Formulario 207 activas.
+2. **Consulta de pacientes (`Victim` & `Registration`)**: Puede ver las planillas del Formulario 207 y sus pacientes. Un usuario `basic` que **nunca** participó en la emergencia no los ve (decisión 18). **Registrar y corregir** pacientes queda reservado al Encargado del Área de Concentración de Víctimas (EACV), al Líder de la Unidad Médica, al Comandante del Incidente y a los roles `manager`+ (decisión 26).
 3. **Gestión de Recursos (`Resource`)**: Puede solicitar la asignación y recepción de equipamiento para el frente de trabajo en el que se desempeña.
 
 ---

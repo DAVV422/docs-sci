@@ -37,6 +37,8 @@ Método:
    - el traspaso de mando no exige el 207 finalizado;
    - el catálogo de cargos usa la terminología estadounidense (ICS) y le faltan cargos del manual, como el **Encargado del ACV**, que es quien registra el 207.
 
+> **Actualización 2026-10-14 (tarde): los P0 S1-S8 están resueltos** en `back-sci` (commits `9840452`…`cd65cfa`) y `front-sci` (`b3bd1ef`, `5ea877f`), con tests unitarios y un escenario E2E (`09-security`) que ataca la API directamente. Ver la columna "Estado" de §2.
+
 Leyenda de prioridad:
 - **P0:** antes de cualquier uso con datos reales.
 - **P1:** necesario para cerrar la Etapa 1 conforme al manual y a las decisiones.
@@ -47,17 +49,17 @@ Leyenda de prioridad:
 
 Mapa completo de rutas del backend, revisado servicio por servicio.
 
-| # | Hallazgo | Evidencia | Prioridad |
+| # | Hallazgo | Evidencia | Prioridad / Estado |
 |:-:|:---|:---|:-:|
-| S1 | `PATCH /emergency/:id/state` no valida quién cambia el estado: solo exige rol para *reabrir*. Un `basic` ajeno puede finalizar o cancelar cualquier emergencia | `EmergencyService.changeState` | **P0** |
-| S2 | `PATCH /emergency/:id` (nombre, coordenadas, PC, E) sin control de permisos | `EmergencyController.update` no recibe el usuario | **P0** |
-| S3 | `PATCH` y `DELETE /resource/:id` sin control de permisos. Además, **el DELETE no devuelve el stock**: borrar un despacho deja las unidades descontadas para siempre | `ResourceService.update/delete` | **P0** |
-| S4 | `PATCH /victim/:id` sin control: cualquiera edita la filiación de cualquier víctima | `VictimService.update` | **P0** |
-| S5 | Lectura de datos de víctimas abierta a todo usuario autenticado: `GET /victim/:id`, `GET /victim/:id/registration`, `GET /form207/:id/registration`, `GET /form207/:id` | Guard de clase sin filtro por participación | **P0** (decisión 18) |
-| S6 | `POST /sync/batch` llama a los servicios **sin el rol del usuario**, así que se saltan todas las validaciones tácticas (F201, F207, triage, bitácora). Es un *bypass* disponible desde ya, no solo en la etapa móvil. Además `form201Service.update` se invoca sin el usuario | `SyncService.processBatch` | **P0** |
-| S7 | `POST /action/:id/audio` (adjuntar audio a una acción) sin control de pertenencia | `ActionService.attachAudioToAction` | **P0** |
-| S8 | `POST /action/upload-audio` sin `fileFilter` ni `limits`: acepta cualquier archivo de cualquier tamaño en el disco del servidor | `ActionController` (multer) | **P0** |
-| S9 | Dependencias del backend en producción: 4 críticas (transitivas) y 19 altas. Directas con riesgo alto: `multer`, `typeorm`, `@nestjs/platform-express`, `bcrypt`, `nodemailer`, `joi`. **`mongoose` está instalado y no se usa** (el módulo está comentado) | `npm audit --omit=dev` | **P0** (multer), **P1** (resto) |
+| S1 | `PATCH /emergency/:id/state` no valida quién cambia el estado: solo exige rol para *reabrir*. Un `basic` ajeno puede finalizar o cancelar cualquier emergencia | `EmergencyService.changeState` | ✅ Resuelto |
+| S2 | `PATCH /emergency/:id` (nombre, coordenadas, PC, E) sin control de permisos | `EmergencyController.update` no recibe el usuario | ✅ Resuelto |
+| S3 | `PATCH` y `DELETE /resource/:id` sin control de permisos. Además, **el DELETE no devuelve el stock**: borrar un despacho deja las unidades descontadas para siempre | `ResourceService.update/delete` | ✅ Resuelto: CI o manager+ y la anulación devuelve el stock |
+| S4 | `PATCH /victim/:id` sin control: cualquiera edita la filiación de cualquier víctima | `VictimService.update` | ✅ Resuelto: EACV, LUMED, CI o manager+ |
+| S5 | Lectura de datos de víctimas abierta a todo usuario autenticado: `GET /victim/:id`, `GET /victim/:id/registration`, `GET /form207/:id/registration`, `GET /form207/:id` | Guard de clase sin filtro por participación | ✅ Resuelto (decisión 18) |
+| S6 | `POST /sync/batch` llama a los servicios **sin el rol del usuario**, así que se saltan todas las validaciones tácticas (F201, F207, triage, bitácora). Es un *bypass* disponible desde ya, no solo en la etapa móvil. Además `form201Service.update` se invoca sin el usuario | `SyncService.processBatch` | ✅ Resuelto |
+| S7 | `POST /action/:id/audio` (adjuntar audio a una acción) sin control de pertenencia | `ActionService.attachAudioToAction` | ✅ Resuelto |
+| S8 | `POST /action/upload-audio` sin `fileFilter` ni `limits`: acepta cualquier archivo de cualquier tamaño en el disco del servidor | `ActionController` (multer) | ✅ Resuelto: 25 MB, lista blanca de formatos, UUID validado antes de tocar el disco |
+| S9 | Dependencias del backend en producción: 4 críticas (transitivas) y 19 altas. Directas con riesgo alto: `multer`, `typeorm`, `@nestjs/platform-express`, `bcrypt`, `nodemailer`, `joi`. **`mongoose` está instalado y no se usa** (el módulo está comentado) | `npm audit --omit=dev` | ✅ multer 2.4 (sin salir de Nest 10). **P1** el resto |
 | S10 | Angular 19: 7 vulnerabilidades altas sin parche en la versión 19. Se corrigen al subir de versión mayor | `pnpm audit --prod` | P1 |
 | S11 | Sin cabeceras de seguridad (`helmet`) y Swagger (`/docs`) expuesto también en producción | `main.ts` | P1 |
 | S12 | `POST /checkToken` y `/expiredToken` reciben el token en la *query string*, que queda en los logs de acceso | `AuthController` | P2 |
@@ -180,7 +182,7 @@ Deuda técnica relevante:
 
 ## 9. Backlog priorizado sugerido
 
-**P0 — Seguridad e integridad** (antes de usar con datos reales):
+**P0 — Seguridad e integridad** ✅ *Resuelto el 2026-10-14*:
 1. Autorización en `changeState` y `PATCH` de la emergencia (CI o manager+), en `PATCH`/`DELETE` de recursos (y que el DELETE restituya el stock o se prohíba), en `PATCH` de víctimas y en adjuntar audio.
 2. Restricción de lectura de víctimas y del 207 (decisión 18).
 3. Propagar usuario y rol en `/sync/batch`.
@@ -189,7 +191,7 @@ Deuda técnica relevante:
 **P1 — Cierre de la Etapa 1 conforme al manual y a las decisiones:**
 5. Fechas y horas: corrección del front (B1) y `TZ` del servidor (B2).
 6. Traspaso de mando: exigir F201 y F207 finalizados, crear el flujo "finalizar todo" y permitir que el nuevo CI abra **su propio F201** (cambiar el índice único a "un 201 no finalizado por emergencia").
-7. 207: destino del traslado con **tabla de centros de salud y autocompletado**, medio de traslado enumerado, regla "ambos o ninguno", lugar de registro ACV/UM editable y registro restringido a EACV, LUMED y CI.
+7. 207: destino del traslado con **tabla de centros de salud y autocompletado**, medio de traslado enumerado, regla "ambos o ninguno", lugar de registro ACV/UM editable y registro restringido a EACV, LUMED, CI y `manager`/`admin`.
 8. Catálogo de cargos alineado al manual: EAE, EACV, terminología LAC, sin entradas que no son cargos. Migración de datos de los cargos existentes.
 9. Croquis del 201: imagen; luego el mapa dibujable.
 10. Hoja del 201 con resumen de acciones, hora de preparación y objetivos como lista.
