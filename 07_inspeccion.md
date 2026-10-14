@@ -93,17 +93,17 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 
 | Campo o regla del manual | Estado | Detalle |
 |:---|:-:|:---|
-| 2 Lugar de registro: **ACV o UM** | 🟡 | Texto libre. Si llega vacío el backend usa "Área de Concentración de Víctimas (ACV)" (antes daba 500 por NOT NULL). Falta precargarlo y ofrecer ACV/UM en la web (decisión 25) |
+| 2 Lugar de registro: **ACV o UM** | ✅ | La web precarga "Área de Concentración de Víctimas (ACV)" y sugiere "Unidad Médica (UM)"; es editable (decisión 25). Si llega vacío, el backend usa el ACV |
 | 3-5 Nombre, sexo, edad (estimada) | ✅ | Admite "NN" y "No determinado" |
 | 6 Clasificación por colores | ✅ | Con re-evaluaciones e historial: el manual lo sugiere y está implementado |
-| 7 **Lugar de traslado** | ❌ | No existe. Decisión 27: tabla de centros de salud creada sobre la marcha, con autocompletado |
-| 8 Trasladado por (**medio**: ambulancia, aéreo, embarcación, otro) | 🟡 | Texto libre |
-| Regla: traslado ⇔ medio (ambos o ninguno) | ❌ | Sin validación |
+| 7 **Lugar de traslado** | ✅ | Tabla `health_facility`: se crea sobre la marcha al registrar el traslado y alimenta el autocompletado (`GET /health-facility?search=`). Sin distinguir tildes, mayúsculas ni espacios, para no duplicar centros (decisión 27) |
+| 8 Trasladado por (**medio**: ambulancia, aéreo, embarcación, otro) | ✅ | `transport_means` enumerado; `transferred_by` queda como la unidad o el vehículo (p. ej. "SAMU 12") |
+| Regla: traslado ⇔ medio (ambos o ninguno) | ✅ | Validada en el backend (400) y en el formulario web |
 | 9 Fecha y hora por paciente | ✅ | Por registro |
 | 10 Preparado por | ✅ | `attendant` |
-| Quién registra: **EACV**, **LUMED** o **CI** (decisión 26) | ❌ | Hoy registra cualquier persona asignada. **El cargo EACV no existe en el catálogo** |
+| Quién registra: **EACV**, **LUMED** o **CI** (decisión 26) | ✅ | Más `manager`/`admin`. El cargo EACV ya está en el seeder |
 | Totales por color | ✅ | Resumen por clasificación vigente |
-| Totales por destino o medio | ❌ | Depende del campo de destino |
+| Totales por destino o medio | ✅ | En la hoja imprimible, según el traslado vigente de cada víctima (una re-evaluación posterior no lo borra) |
 | Datos sensibles con acceso restringido | ❌ | Ver S5 |
 
 ### 3.3 Mando, organización y periodos
@@ -196,7 +196,7 @@ Deuda técnica relevante:
 **P1 — Cierre de la Etapa 1 conforme al manual y a las decisiones:**
 5. ✅ Fechas y horas en UTC con zona horaria de la institución (B1, B2, B6, B7).
 6. ✅ Traspaso de mando: exige F201 y F207 finalizados, flujo "finalizar todo" con advertencias, y el nuevo CI abre **su propio F201** (B8, B9 y B10 aparecieron al probarlo de punta a punta).
-7. 207: destino del traslado con **tabla de centros de salud y autocompletado**, medio de traslado enumerado, regla "ambos o ninguno", lugar de registro ACV/UM editable y registro restringido a EACV, LUMED, CI y `manager`/`admin`.
+7. ✅ 207: destino del traslado con **tabla de centros de salud y autocompletado**, medio de traslado enumerado, regla "ambos o ninguno", lugar de registro ACV/UM editable y registro restringido a EACV, LUMED, CI y `manager`/`admin`.
 8. Catálogo de cargos alineado al manual: EAE, EACV, terminología LAC, sin entradas que no son cargos. Migración de datos de los cargos existentes.
 9. Croquis del 201: imagen; luego el mapa dibujable.
 10. Hoja del 201 con resumen de acciones, hora de preparación y objetivos como lista.
