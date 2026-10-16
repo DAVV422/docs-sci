@@ -32,6 +32,8 @@
 | 26 | Quién registra en el 207 | Los **encargados** (Encargado del ACV y Líder de la Unidad Médica), el **Comandante del Incidente** y los roles globales **`manager`/`admin`** (para correcciones desde la central; el autor queda en el log) |
 | 27 | Destino del traslado | Se crea **sobre la marcha** desde el 207 y se guarda en una **tabla de centros de salud**, que luego sirve para **sugerencias y autocompletado** |
 | 28 | Reportes | Base: emergencias (atendidas, activas, reportadas, por tipo…) y participación del personal (emergencias, horas, cargos…). Propuesta completa en [08](./08_reportes_propuesta.md), pendiente de validar |
+| 29 | Comando Unificado | **No por ahora** (2026-10-16): se mantiene un único CI activo por emergencia |
+| 30 | Confirmación del traspaso | **Solo quien entrega** (2026-10-16): el CI saliente marca la lista de transferencia del manual; quien recibe no confirma en el sistema, pero recibe una notificación |
 
 ## Preguntas abiertas
 

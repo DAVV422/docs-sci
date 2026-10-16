@@ -79,13 +79,13 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | 4 Evaluación inicial (naturaleza, amenazas, área, **aislamiento**) | 🟡 | El aislamiento vive en la evaluación inicial, no en el 201. La hoja impresa lo toma de ahí |
 | 5 Objetivos iniciales (lista) | ✅ | Se escriben uno por línea (también se reconoce "1. … 2. …") y se muestran e imprimen como lista numerada. Sigue siendo un texto en la base: no hay estado por objetivo |
 | 6 Ubicación del PC | ✅ | `coordinates_pc` |
-| 7 Ubicación de las Áreas de Espera (**lista**) | 🟡 | Solo un punto E |
+| 7 Ubicación de las Áreas de Espera (**lista**) | ✅ | El punto E principal más las áreas de espera dibujadas en el mapa de situación, en la pestaña y en la hoja impresa |
 | 8-9 Rutas de ingreso y egreso | ✅ | Texto |
 | 10 Mensaje de seguridad | ✅ | |
 | 11 Comandante del incidente | ✅ | El CI del organigrama capturado en ese 201 (si no figura, el CI activo) |
 | 12 **Mapa o croquis** | ✅ | Imagen del croquis (JPG/PNG/WebP hasta 10 MB, firma del archivo verificada, se sirve solo con sesión) y mapa de situación dibujable: perímetro de seguridad y símbolos del Anexo D (PC, E, ACV, B, C, H, H1, origen, peligro, primeros auxilios, agua, recurso), con el incidente, el PC y el E de la emergencia como referencia y el norte arriba. Editable mientras el 201 esté abierto; en la hoja imprimible va en página aparte (decisión 3) |
 | 13 **Resumen de las acciones** (cronológico) | ✅ | Página 3 de la hoja: la bitácora en orden cronológico, solo del periodo de ese mando (hasta `finalized_at` del 201; lo anterior al primer 201 va al primero). Las entradas no tienen aún los campos estrategia/táctica/problema/área por separado |
-| 14 Organización actual (**historial secuencial**) | 🟡 | Snapshot solo al crear el 201. El manual pide registrar cada cambio de estructura |
+| 14 Organización actual (**historial secuencial**) | ✅ | Un trigger en la base registra cada alta, liberación, cambio de cargo y anulación (`organization_change`, con los nombres de ese momento). Se ve en el organigrama y la hoja impresa lista los cambios del periodo |
 | Un 201 **por periodo** (= por mando, decisión 24) | ✅ | Índice `uq_form201_open_per_emergency`: como máximo un 201 **abierto**. Tras el traspaso el nuevo CI inicia el suyo; los anteriores se consultan e imprimen desde el selector de mandos (`/print/form201/:id?form=<id>`) |
 | El 201 completo es obligatorio para transferir el mando | ✅ | Además de finalizado: el traspaso exige el 201 del mando saliente (preparado después de asumir), el lugar del incidente (3) y la ubicación del PC (6); las casillas 2, 4, 5 y 10 ya son obligatorias en el formulario. El modal muestra qué falta y no cierra nada mientras haya bloqueos |
 
@@ -111,10 +111,10 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | Requisito | Estado | Detalle |
 |:---|:-:|:---|
 | Un único CI activo | ✅ | Índice único parcial en la BD |
-| Comando Unificado (varios CI) | ❌ | No contemplado. No fue pedido; anotado para decidir |
+| Comando Unificado (varios CI) | ➖ | **No por ahora** (decisión 29) |
 | Transferencia de mando formal y registrada | ✅ | Transaccional, con entrada en la bitácora |
 | Transferir exige **F201 y F207 finalizados** + flujo "finalizar todo" | ✅ | `GET /emergency/:id/forms/pending` y `POST /emergency/:id/forms/finalize-all` (CI o manager+, transaccional, con entrada en la bitácora). El modal lista los códigos abiertos, advierte y exige confirmar antes de cerrar y traspasar |
-| Checklist de transferencia del manual | ❌ | No hay checklist ni confirmación de quien recibe |
+| Checklist de transferencia del manual | ✅ | El CI saliente marca los 10 temas de la transferencia del manual (más notas), que quedan en la bitácora. Antes se exigen la ubicación (casilla 3), el PC (casilla 6) y el 201 del mando actual. Solo confirma quien entrega (decisión 30); el nuevo y el anterior CI reciben una notificación |
 | Catálogo de cargos del manual | ✅ | 43 cargos con la terminología y siglas del manual (Anexo A): EAE, EACV, CROA, helibase, helipunto, registrador, radioperador y operador de ambulancia incluidos. Fuente única en `back-sci/src/sci_module/charges/sci-charge-catalog.ts`, sincronizada al arrancar: renombra en el mismo registro (las asignaciones se conservan), fusiona duplicados y retira lo que no son cargos (Rescatista, Paramédico, Bombero, Voluntario). Los cargos que cree un administrador no se tocan |
 | Jerarquía con un único superior | 🟡 | Los cargos tienen nivel y peso, pero no superior (sin `parentId`) |
 | Periodo Inicial (1-4 h) y Periodos Operacionales (12-24 h) | ➖ | **Fuera de esta etapa** (decisión 24): el traspaso de mando marca el cambio de periodo |
@@ -146,8 +146,8 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 |:---|:-:|:---|
 | Editar los datos de una emergencia ya creada (nombre, PC, E) | ✅ | Botón "Editar" en la cabecera del Centro de Mando (CI o manager+, emergencia abierta): nombre, tipo, lugar, inicio en hora de la institución y puntos del incidente, PC y E en el mapa |
 | Recuperación de contraseña | ✅ | `POST /forgot-password` (respuesta idéntica exista o no la cuenta, 3/min) y `POST /reset-password` (token de un solo uso, 1 h, guardado con hash; al usarse revoca los refresh tokens). Pantallas `/forgot-password` y `/recover-password`; el token se quita de la barra de direcciones. Los access tokens ya emitidos siguen vigentes hasta que expiran |
-| Administración del catálogo de cargos SCI (admin) | P2 | El backend lo soporta; no hay pantalla |
-| Centro de notificaciones (incluidos los conflictos de sincronización) | P2 | El backend genera notificaciones; la web no las muestra |
+| Administración del catálogo de cargos SCI (admin) | ✅ | Pantalla `/charges`: los cargos del manual son de solo lectura (el backend también rechaza editarlos o eliminarlos); se crean, editan y eliminan los propios, sin nombres del manual ni repetidos, y no se elimina uno con asignaciones activas |
+| Centro de notificaciones (incluidos los conflictos de sincronización) | ✅ | Campana en la barra superior con contador, en vivo por WebSocket; cada aviso abre su emergencia. Avisos: asignación, asignación o traspaso del mando y cambio de estado de la emergencia. Los conflictos de sincronización se suman con el móvil (Etapa 2) |
 | Croquis del 201 (imagen + mapa dibujable) | ✅ | Decisión 3 |
 | Flujo "finalizar todo y traspasar el mando" | ✅ | Decisión 6 |
 | Reportes y estadísticas operativas | P2 | Falta definir cuáles (pregunta 6) |
@@ -208,8 +208,9 @@ Deuda técnica relevante:
 13. ✅ Seguridad de producción: verificación real del JWT (B14), whitelist (B15), helmet, Swagger, `/seed` fuera de producción, chequeo de secretos al arrancar, `TRUST_PROXY`, `DB_SSL`, dependencias actualizadas y Angular 21. Queda del lado del despliegue: HTTPS, respaldos, rotar la clave de Google Maps y monitoreo de disco.
 
 **P2:**
-- Centro de notificaciones.
-- Administración de cargos.
+- ✅ Centro de notificaciones.
+- ✅ Administración de cargos.
+- ✅ Lista de transferencia del manual, áreas de espera (casilla 7) e historial de la organización (casilla 14).
 - Reparar o reemplazar la suite E2E del backend.
 - Primeros reportes (propuesta en [08](./08_reportes_propuesta.md)). Requieren antes guardar las marcas de tiempo que hoy faltan: liberación de personal y cambios de estado de la emergencia.
 
