@@ -135,6 +135,8 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | B9 | Crear un 207 sin lugar de registro devolvía 500 (el DTO lo admite opcional, la columna es NOT NULL) | El móvil u otro cliente no podía abrir un 207 | ✅ Resuelto: ACV por defecto |
 | B10 | Los modales tenían `aria-labelledby` con el título como id (con espacios), así que el diálogo no tenía nombre accesible | Lectores de pantalla y pruebas | ✅ Resuelto: id único por modal |
 | B11 | Los correos de activación enlazaban a `/auth/activate`, ruta que no existe en el front (es `/activate`) | Nadie podía activar su cuenta desde el correo | ✅ Resuelto: rutas corregidas en el backend y redirección en el front para los enlaces ya enviados |
+| B14 | El `AuthGuard` solo decodificaba el JWT (`jwt.decode`), sin verificar la firma: cualquiera podía fabricar un token con el `sub` de otro usuario, incluido un superadministrador. Además un refresh token servía como token de acceso, y sin `JWT_EXPIRATION` el token no expiraba | Toma de cualquier cuenta | ✅ Resuelto: firma HS256, expiración y `typ` verificados en HTTP y WebSocket; 8 h por defecto y renovación automática en la web |
+| B15 | El `ValidationPipe` global no tenía `whitelist`: los DTO aceptaban propiedades no declaradas | Asignación masiva de campos | ✅ Resuelto: se descartan |
 | B13 | `POST /action` y `POST /action/:id/audio` aceptaban cualquier `pathAudio` del cliente: se podía enlazar a una acción propia el audio de otra persona | Acceso a notas de voz ajenas | ✅ Resuelto: el audio debe ser del mismo usuario y emergencia, y existir en el almacenamiento |
 | B12 | `AuthService.recoverPassword(email)` entregaba un access token a quien supiera un correo. No estaba expuesto, pero bastaba con conectarlo a una ruta | Toma de cuentas | ✅ Resuelto: eliminado y reemplazado por el flujo con token de un solo uso |
 
@@ -168,11 +170,11 @@ Deuda técnica relevante:
 ## 7. Preparación para producción (VPS)
 
 - [ ] HTTPS con un *reverse proxy* (Nginx/Caddy) delante de Node, incluido el WebSocket.
-- [ ] `APP_PROD=true` (bloquea los seeders y restringe CORS), `TZ=America/La_Paz` y secretos solo en el entorno.
+- [ ] `APP_PROD=true` y secretos solo en el entorno. La API **no arranca** con `JWT_AUTH` de menos de 32 caracteres o de ejemplo, `ADMIN_PASSWORD` débil o CORS abierto. El primer superadministrador se crea al arrancar desde `ADMIN_EMAIL`/`ADMIN_PASSWORD`. (El proceso corre en UTC por diseño: no fijar `TZ`; la zona de la institución es `APP_TIMEZONE`.)
 - [ ] Respaldos automáticos de PostgreSQL y de `data/` (audios e imágenes), con prueba de restauración.
-- [ ] `helmet` y Swagger deshabilitado o protegido en producción.
-- [ ] Límites de subida (tipo y tamaño) y espacio en disco monitoreado.
-- [ ] Actualizar las dependencias con vulnerabilidades altas.
+- [x] `helmet` y Swagger apagado en producción (salvo `SWAGGER_ENABLED=true`). `/seed` responde 404. `TRUST_PROXY=1` detrás del proxy y `DB_SSL` según dónde esté Postgres.
+- [ ] Límites de subida ✅ (audio 25 MB, imágenes 10 MB, firma del archivo verificada); falta monitorear el espacio en disco.
+- [x] Dependencias: backend sin altas ni críticas en producción (quedan 11 moderadas propias de Nest 10: migrar a Nest 11 en una etapa posterior); front en Angular 21.2 sin vulnerabilidades conocidas. Angular 22 exige Node 24.15+.
 - [ ] Rotar la clave de Google Maps (está en el historial público) y restringirla por dominio.
 
 ## 8. Preparación para la etapa móvil e IA
@@ -205,7 +207,7 @@ Deuda técnica relevante:
 10. ✅ Hoja del 201 en las 4 páginas del formulario oficial: resumen de acciones, hora de preparación, objetivos como lista y encabezado repetido.
 11. ✅ Pantallas: editar emergencia y recuperación de contraseña.
 12. ✅ Storage abstraído por claves (`IStorageService`: put/get/exists/delete, el contrato de S3) para fotos de perfil, croquis y notas de voz; hoy en disco (`LocalStorageService`, raíz `STORAGE_LOCAL_ROOT`). Para S3 falta solo un proveedor de `STORAGE_SERVICE` con `@aws-sdk/client-s3`. El E2E usa `front-sci/e2e/.state/storage` y la vacía en cada corrida. Sin migración de datos: las claves respetan la estructura existente de `data/` y los audios antiguos (`data/audios/...`) se leen igual.
-13. Seguridad de producción: helmet, Swagger, dependencias. Proteger o deshabilitar `GET /seed/all` y `GET /seed/charges`, que hoy no exigen sesión (con el catálogo sincronizado al arrancar, `/seed/charges` ya no hace falta en producción).
+13. ✅ Seguridad de producción: verificación real del JWT (B14), whitelist (B15), helmet, Swagger, `/seed` fuera de producción, chequeo de secretos al arrancar, `TRUST_PROXY`, `DB_SSL`, dependencias actualizadas y Angular 21. Queda del lado del despliegue: HTTPS, respaldos, rotar la clave de Google Maps y monitoreo de disco.
 
 **P2:**
 - KPI de víctimas.
