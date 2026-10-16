@@ -134,13 +134,15 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | B8 | El buscador de personal usaba `GET /user` (solo manager+): un CI con rol `basic` no podía asignar personal ni traspasar el mando desde la web | Flujos del CI bloqueados | ✅ Resuelto: `GET /user/directory` para cualquier usuario autenticado, solo con nombre, apellido, grado y disponibilidad (sin correo ni rol) |
 | B9 | Crear un 207 sin lugar de registro devolvía 500 (el DTO lo admite opcional, la columna es NOT NULL) | El móvil u otro cliente no podía abrir un 207 | ✅ Resuelto: ACV por defecto |
 | B10 | Los modales tenían `aria-labelledby` con el título como id (con espacios), así que el diálogo no tenía nombre accesible | Lectores de pantalla y pruebas | ✅ Resuelto: id único por modal |
+| B11 | Los correos de activación enlazaban a `/auth/activate`, ruta que no existe en el front (es `/activate`) | Nadie podía activar su cuenta desde el correo | ✅ Resuelto: rutas corregidas en el backend y redirección en el front para los enlaces ya enviados |
+| B12 | `AuthService.recoverPassword(email)` entregaba un access token a quien supiera un correo. No estaba expuesto, pero bastaba con conectarlo a una ruta | Toma de cuentas | ✅ Resuelto: eliminado y reemplazado por el flujo con token de un solo uso |
 
 ## 5. Funcionalidades faltantes en la web
 
 | Funcionalidad | Prioridad | Nota |
 |:---|:-:|:---|
-| Editar los datos de una emergencia ya creada (nombre, PC, E) | P1 | El servicio existe; falta la pantalla. En terreno, el PC y el E suelen definirse después |
-| Recuperación de contraseña | P1 | Solo existe la plantilla de correo |
+| Editar los datos de una emergencia ya creada (nombre, PC, E) | ✅ | Botón "Editar" en la cabecera del Centro de Mando (CI o manager+, emergencia abierta): nombre, tipo, lugar, inicio en hora de la institución y puntos del incidente, PC y E en el mapa |
+| Recuperación de contraseña | ✅ | `POST /forgot-password` (respuesta idéntica exista o no la cuenta, 3/min) y `POST /reset-password` (token de un solo uso, 1 h, guardado con hash; al usarse revoca los refresh tokens). Pantallas `/forgot-password` y `/recover-password`; el token se quita de la barra de direcciones. Los access tokens ya emitidos siguen vigentes hasta que expiran |
 | Administración del catálogo de cargos SCI (admin) | P2 | El backend lo soporta; no hay pantalla |
 | Centro de notificaciones (incluidos los conflictos de sincronización) | P2 | El backend genera notificaciones; la web no las muestra |
 | Croquis del 201 (imagen + mapa dibujable) | ✅ | Decisión 3 |
@@ -200,7 +202,7 @@ Deuda técnica relevante:
 8. ✅ Catálogo de cargos alineado al manual: EAE, EACV, terminología LAC, sin entradas que no son cargos. Migración de datos de los cargos existentes (aplicada también en la base de desarrollo).
 9. ✅ Croquis del 201: imagen y mapa dibujable (sin la Drawing Library de Google, que ya no está disponible).
 10. ✅ Hoja del 201 en las 4 páginas del formulario oficial: resumen de acciones, hora de preparación, objetivos como lista y encabezado repetido.
-11. Pantallas: editar emergencia y recuperación de contraseña.
+11. ✅ Pantallas: editar emergencia y recuperación de contraseña.
 12. Storage abstraído (disco hoy, S3 mañana) para audios e imágenes (perfil y croquis ya pasan por `IStorageService`; los audios todavía no). Separar la carpeta de datos del E2E: hoy sus croquis caen en `data/uploads` del entorno de desarrollo.
 13. Seguridad de producción: helmet, Swagger, dependencias. Proteger o deshabilitar `GET /seed/all` y `GET /seed/charges`, que hoy no exigen sesión (con el catálogo sincronizado al arrancar, `/seed/charges` ya no hace falta en producción).
 
