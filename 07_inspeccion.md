@@ -87,7 +87,7 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | 13 **Resumen de las acciones** (cronológico) | ✅ | Página 3 de la hoja: la bitácora en orden cronológico, solo del periodo de ese mando (hasta `finalized_at` del 201; lo anterior al primer 201 va al primero). Las entradas no tienen aún los campos estrategia/táctica/problema/área por separado |
 | 14 Organización actual (**historial secuencial**) | 🟡 | Snapshot solo al crear el 201. El manual pide registrar cada cambio de estructura |
 | Un 201 **por periodo** (= por mando, decisión 24) | ✅ | Índice `uq_form201_open_per_emergency`: como máximo un 201 **abierto**. Tras el traspaso el nuevo CI inicia el suyo; los anteriores se consultan e imprimen desde el selector de mandos (`/print/form201/:id?form=<id>`) |
-| El 201 completo es obligatorio para transferir el mando | 🟡 | Se exige *finalizado*; no se validan los campos mínimos (1-6, 10, 11) |
+| El 201 completo es obligatorio para transferir el mando | ✅ | Además de finalizado: el traspaso exige el 201 del mando saliente (preparado después de asumir), el lugar del incidente (3) y la ubicación del PC (6); las casillas 2, 4, 5 y 10 ya son obligatorias en el formulario. El modal muestra qué falta y no cierra nada mientras haya bloqueos |
 
 ### 3.2 Formulario SCI-207
 
@@ -128,7 +128,7 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | B2 | Horas de la bitácora automática con `getHours()` del proceso Node | En un VPS en UTC quedan +4 h | ✅ Resuelto: el proceso se fija en UTC y la zona de la institución (`APP_TIMEZONE`) se usa solo para mostrar y reportar |
 | B6 | El listado de emergencias no traía el usuario de las asignaciones: `findCommanderName` lanzaba una excepción y la fila quedaba sin Comandante ni Fecha/Hora | Columna Comandante del listado siempre rota | ✅ Resuelto |
 | B7 | Fechas de calendario (F201, F207) mostradas con `DatePipe`, que las interpreta como medianoche UTC | `2026-10-03` se veía `02/10/2026` en UTC-4 | ✅ Resuelto |
-| B3 | KPI "víctimas" del dashboard siempre en 0 (`victimsCount` nunca llega) | Dato falso en pantalla | P2 |
+| B3 | KPI "víctimas" del dashboard siempre en 0 (`victimsCount` nunca llega) | Dato falso en pantalla | ✅ Resuelto: el listado trae `victimsCount` (víctimas distintas en los F207 vigentes; conteo sin datos de pacientes) |
 | B4 | `DELETE /resource/:id` no restituye el stock | Inventario descuadrado | ✅ Resuelto (ver S3) |
 | B5 | La hoja imprimible del 201 no incluye el resumen de acciones | Formulario incompleto respecto al oficial | ✅ Resuelto: página 3 |
 | B8 | El buscador de personal usaba `GET /user` (solo manager+): un CI con rol `basic` no podía asignar personal ni traspasar el mando desde la web | Flujos del CI bloqueados | ✅ Resuelto: `GET /user/directory` para cualquier usuario autenticado, solo con nombre, apellido, grado y disponibilidad (sin correo ni rol) |
@@ -173,7 +173,7 @@ Deuda técnica relevante:
 - [x] `helmet` y Swagger apagado en producción (salvo `SWAGGER_ENABLED=true`). `/seed` responde 404. `TRUST_PROXY=1` detrás del proxy y `DB_SSL` según dónde esté Postgres.
 - [ ] Límites de subida ✅ (audio 25 MB, imágenes 10 MB, firma del archivo verificada); falta monitorear el espacio en disco.
 - [x] Dependencias: backend sin altas ni críticas en producción (quedan 11 moderadas propias de Nest 10: migrar a Nest 11 en una etapa posterior); front en Angular 21.2 sin vulnerabilidades conocidas. Angular 22 exige Node 24.15+.
-- [ ] Rotar la clave de Google Maps (está en el historial público) y restringirla por dominio.
+- [ ] Clave de Google Maps nueva, restringida por dominio, cargada solo al compilar en el servidor. El repositorio ya no tiene claves (las anteriores, inválidas, siguen en el historial) y un hook `pre-commit` rechaza credenciales (`git config core.hooksPath .githooks`).
 
 ## 8. Preparación para la etapa móvil e IA
 
@@ -208,7 +208,6 @@ Deuda técnica relevante:
 13. ✅ Seguridad de producción: verificación real del JWT (B14), whitelist (B15), helmet, Swagger, `/seed` fuera de producción, chequeo de secretos al arrancar, `TRUST_PROXY`, `DB_SSL`, dependencias actualizadas y Angular 21. Queda del lado del despliegue: HTTPS, respaldos, rotar la clave de Google Maps y monitoreo de disco.
 
 **P2:**
-- KPI de víctimas.
 - Centro de notificaciones.
 - Administración de cargos.
 - Reparar o reemplazar la suite E2E del backend.
