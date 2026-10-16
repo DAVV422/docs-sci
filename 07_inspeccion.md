@@ -74,17 +74,17 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | Campo del manual | Estado | Detalle |
 |:---|:-:|:---|
 | 1 Nombre del incidente | ✅ | `emergency.name` |
-| 2 Fecha **y hora** de preparación | 🟡 | El F201 guarda solo `date`; falta la hora |
+| 2 Fecha **y hora** de preparación | ✅ | `prepared_at` (UTC), ingresado en hora de la institución; los 201 anteriores usan la hora de creación. Se repite en el encabezado de las 4 páginas junto con las casillas 1 y 11 |
 | 3 Lugar + coordenadas | ✅ | Desde la emergencia |
 | 4 Evaluación inicial (naturaleza, amenazas, área, **aislamiento**) | 🟡 | El aislamiento vive en la evaluación inicial, no en el 201. La hoja impresa lo toma de ahí |
-| 5 Objetivos iniciales (lista) | 🟡 | Un solo texto libre, no una lista |
+| 5 Objetivos iniciales (lista) | ✅ | Se escriben uno por línea (también se reconoce "1. … 2. …") y se muestran e imprimen como lista numerada. Sigue siendo un texto en la base: no hay estado por objetivo |
 | 6 Ubicación del PC | ✅ | `coordinates_pc` |
 | 7 Ubicación de las Áreas de Espera (**lista**) | 🟡 | Solo un punto E |
 | 8-9 Rutas de ingreso y egreso | ✅ | Texto |
 | 10 Mensaje de seguridad | ✅ | |
-| 11 Comandante del incidente | ✅ | Derivado del CI activo |
+| 11 Comandante del incidente | ✅ | El CI del organigrama capturado en ese 201 (si no figura, el CI activo) |
 | 12 **Mapa o croquis** | ✅ | Imagen del croquis (JPG/PNG/WebP hasta 10 MB, firma del archivo verificada, se sirve solo con sesión) y mapa de situación dibujable: perímetro de seguridad y símbolos del Anexo D (PC, E, ACV, B, C, H, H1, origen, peligro, primeros auxilios, agua, recurso), con el incidente, el PC y el E de la emergencia como referencia y el norte arriba. Editable mientras el 201 esté abierto; en la hoja imprimible va en página aparte (decisión 3) |
-| 13 **Resumen de las acciones** (cronológico) | 🟡 | La bitácora existe, pero **la hoja imprimible del 201 no la incluye** (es la página 3 del formulario) |
+| 13 **Resumen de las acciones** (cronológico) | ✅ | Página 3 de la hoja: la bitácora en orden cronológico, solo del periodo de ese mando (hasta `finalized_at` del 201; lo anterior al primer 201 va al primero). Las entradas no tienen aún los campos estrategia/táctica/problema/área por separado |
 | 14 Organización actual (**historial secuencial**) | 🟡 | Snapshot solo al crear el 201. El manual pide registrar cada cambio de estructura |
 | Un 201 **por periodo** (= por mando, decisión 24) | ✅ | Índice `uq_form201_open_per_emergency`: como máximo un 201 **abierto**. Tras el traspaso el nuevo CI inicia el suyo; los anteriores se consultan e imprimen desde el selector de mandos (`/print/form201/:id?form=<id>`) |
 | El 201 completo es obligatorio para transferir el mando | 🟡 | Se exige *finalizado*; no se validan los campos mínimos (1-6, 10, 11) |
@@ -130,7 +130,7 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | B7 | Fechas de calendario (F201, F207) mostradas con `DatePipe`, que las interpreta como medianoche UTC | `2026-10-03` se veía `02/10/2026` en UTC-4 | ✅ Resuelto |
 | B3 | KPI "víctimas" del dashboard siempre en 0 (`victimsCount` nunca llega) | Dato falso en pantalla | P2 |
 | B4 | `DELETE /resource/:id` no restituye el stock | Inventario descuadrado | **P0** (ver S3) |
-| B5 | La hoja imprimible del 201 no incluye el resumen de acciones | Formulario incompleto respecto al oficial | P1 |
+| B5 | La hoja imprimible del 201 no incluye el resumen de acciones | Formulario incompleto respecto al oficial | ✅ Resuelto: página 3 |
 | B8 | El buscador de personal usaba `GET /user` (solo manager+): un CI con rol `basic` no podía asignar personal ni traspasar el mando desde la web | Flujos del CI bloqueados | ✅ Resuelto: `GET /user/directory` para cualquier usuario autenticado, solo con nombre, apellido, grado y disponibilidad (sin correo ni rol) |
 | B9 | Crear un 207 sin lugar de registro devolvía 500 (el DTO lo admite opcional, la columna es NOT NULL) | El móvil u otro cliente no podía abrir un 207 | ✅ Resuelto: ACV por defecto |
 | B10 | Los modales tenían `aria-labelledby` con el título como id (con espacios), así que el diálogo no tenía nombre accesible | Lectores de pantalla y pruebas | ✅ Resuelto: id único por modal |
@@ -199,7 +199,7 @@ Deuda técnica relevante:
 7. ✅ 207: destino del traslado con **tabla de centros de salud y autocompletado**, medio de traslado enumerado, regla "ambos o ninguno", lugar de registro ACV/UM editable y registro restringido a EACV, LUMED, CI y `manager`/`admin`.
 8. ✅ Catálogo de cargos alineado al manual: EAE, EACV, terminología LAC, sin entradas que no son cargos. Migración de datos de los cargos existentes (aplicada también en la base de desarrollo).
 9. ✅ Croquis del 201: imagen y mapa dibujable (sin la Drawing Library de Google, que ya no está disponible).
-10. Hoja del 201 con resumen de acciones, hora de preparación y objetivos como lista.
+10. ✅ Hoja del 201 en las 4 páginas del formulario oficial: resumen de acciones, hora de preparación, objetivos como lista y encabezado repetido.
 11. Pantallas: editar emergencia y recuperación de contraseña.
 12. Storage abstraído (disco hoy, S3 mañana) para audios e imágenes (perfil y croquis ya pasan por `IStorageService`; los audios todavía no). Separar la carpeta de datos del E2E: hoy sus croquis caen en `data/uploads` del entorno de desarrollo.
 13. Seguridad de producción: helmet, Swagger, dependencias. Proteger o deshabilitar `GET /seed/all` y `GET /seed/charges`, que hoy no exigen sesión (con el catálogo sincronizado al arrancar, `/seed/charges` ya no hace falta en producción).
