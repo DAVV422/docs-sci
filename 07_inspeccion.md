@@ -135,6 +135,7 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | B9 | Crear un 207 sin lugar de registro devolvía 500 (el DTO lo admite opcional, la columna es NOT NULL) | El móvil u otro cliente no podía abrir un 207 | ✅ Resuelto: ACV por defecto |
 | B10 | Los modales tenían `aria-labelledby` con el título como id (con espacios), así que el diálogo no tenía nombre accesible | Lectores de pantalla y pruebas | ✅ Resuelto: id único por modal |
 | B11 | Los correos de activación enlazaban a `/auth/activate`, ruta que no existe en el front (es `/activate`) | Nadie podía activar su cuenta desde el correo | ✅ Resuelto: rutas corregidas en el backend y redirección en el front para los enlaces ya enviados |
+| B13 | `POST /action` y `POST /action/:id/audio` aceptaban cualquier `pathAudio` del cliente: se podía enlazar a una acción propia el audio de otra persona | Acceso a notas de voz ajenas | ✅ Resuelto: el audio debe ser del mismo usuario y emergencia, y existir en el almacenamiento |
 | B12 | `AuthService.recoverPassword(email)` entregaba un access token a quien supiera un correo. No estaba expuesto, pero bastaba con conectarlo a una ruta | Toma de cuentas | ✅ Resuelto: eliminado y reemplazado por el flujo con token de un solo uso |
 
 ## 5. Funcionalidades faltantes en la web
@@ -203,7 +204,7 @@ Deuda técnica relevante:
 9. ✅ Croquis del 201: imagen y mapa dibujable (sin la Drawing Library de Google, que ya no está disponible).
 10. ✅ Hoja del 201 en las 4 páginas del formulario oficial: resumen de acciones, hora de preparación, objetivos como lista y encabezado repetido.
 11. ✅ Pantallas: editar emergencia y recuperación de contraseña.
-12. Storage abstraído (disco hoy, S3 mañana) para audios e imágenes (perfil y croquis ya pasan por `IStorageService`; los audios todavía no). Separar la carpeta de datos del E2E: hoy sus croquis caen en `data/uploads` del entorno de desarrollo.
+12. ✅ Storage abstraído por claves (`IStorageService`: put/get/exists/delete, el contrato de S3) para fotos de perfil, croquis y notas de voz; hoy en disco (`LocalStorageService`, raíz `STORAGE_LOCAL_ROOT`). Para S3 falta solo un proveedor de `STORAGE_SERVICE` con `@aws-sdk/client-s3`. El E2E usa `front-sci/e2e/.state/storage` y la vacía en cada corrida. Sin migración de datos: las claves respetan la estructura existente de `data/` y los audios antiguos (`data/audios/...`) se leen igual.
 13. Seguridad de producción: helmet, Swagger, dependencias. Proteger o deshabilitar `GET /seed/all` y `GET /seed/charges`, que hoy no exigen sesión (con el catálogo sincronizado al arrancar, `/seed/charges` ya no hace falta en producción).
 
 **P2:**
