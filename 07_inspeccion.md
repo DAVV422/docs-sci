@@ -162,14 +162,14 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | **E2E del backend (supertest)** | ❌ **24/49 fallan** | **Desactualizada**: arma módulos a mano con mocks que no siguieron a los servicios (dependencias faltantes, métodos inexistentes en los mocks, reglas que cambiaron). Ya fallaban los 24 antes del 2026-10-03; los 6 que rompieron mis cambios están corregidos. Hoy esta suite no protege nada: hay que repararla o reemplazarla por los E2E de Playwright más tests de integración con BD real |
 
 Deuda técnica relevante:
-- **`synchronize: true` también en producción**, sin migraciones. Es una decisión del proyecto, pero en producción un cambio de entidad puede borrar columnas con datos. Recomiendo como mínimo respaldo automático previo a cada despliegue; idealmente, migraciones.
-- **Fechas guardadas como texto** (`date` y `hour` como `varchar` en emergencias y acciones): complica los reportes por rango (decisión 19) y las zonas horarias.
+- ✅ **Migraciones** (2026-10-16): el esquema se versiona en `back-sci/src/migrations` y se aplica al arrancar; `synchronize` quedó apagado (antes podía borrar columnas con datos en producción). Ver [09](./09_despliegue.md) §8.
+- ✅ **Fechas para reportes** (2026-10-16): todos los instantes son `timestamptz`; emergencia, asignación, acción y triage tienen además `occurred_at` (instante UTC calculado por trigger desde `date` + `hour`, indexado). `date`/`hour` siguen igual en la API.
 
 ## 7. Preparación para producción (VPS)
 
-- [ ] HTTPS con un *reverse proxy* (Nginx/Caddy) delante de Node, incluido el WebSocket.
+- [ ] HTTPS con un *reverse proxy* (Nginx/Caddy) delante de Node, incluido el WebSocket. Guía y Caddyfile listos en [09](./09_despliegue.md); falta hacerlo en el VPS.
 - [ ] `APP_PROD=true` y secretos solo en el entorno. La API **no arranca** con `JWT_AUTH` de menos de 32 caracteres o de ejemplo, `ADMIN_PASSWORD` débil o CORS abierto. El primer superadministrador se crea al arrancar desde `ADMIN_EMAIL`/`ADMIN_PASSWORD`. (El proceso corre en UTC por diseño: no fijar `TZ`; la zona de la institución es `APP_TIMEZONE`.)
-- [ ] Respaldos automáticos de PostgreSQL y de `data/` (audios e imágenes), con prueba de restauración.
+- [ ] Respaldos: `scripts/backup.sh` y `scripts/restore.sh` probados (respaldo y restauración de la base de desarrollo con conteos idénticos). Falta programarlos en el VPS con copia fuera del servidor ([09](./09_despliegue.md) §6).
 - [x] `helmet` y Swagger apagado en producción (salvo `SWAGGER_ENABLED=true`). `/seed` responde 404. `TRUST_PROXY=1` detrás del proxy y `DB_SSL` según dónde esté Postgres.
 - [ ] Límites de subida ✅ (audio 25 MB, imágenes 10 MB, firma del archivo verificada); falta monitorear el espacio en disco.
 - [x] Dependencias: backend sin altas ni críticas en producción (quedan 11 moderadas propias de Nest 10: migrar a Nest 11 en una etapa posterior); front en Angular 21.2 sin vulnerabilidades conocidas. Angular 22 exige Node 24.15+.
@@ -212,7 +212,6 @@ Deuda técnica relevante:
 - Centro de notificaciones.
 - Administración de cargos.
 - Reparar o reemplazar la suite E2E del backend.
-- Fechas como `timestamptz`.
 - Primeros reportes (propuesta en [08](./08_reportes_propuesta.md)). Requieren antes guardar las marcas de tiempo que hoy faltan: liberación de personal y cambios de estado de la emergencia.
 
 **P3:** App móvil Flutter y pipeline de IA (Etapa 2).
