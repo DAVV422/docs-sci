@@ -59,9 +59,9 @@ Mapa completo de rutas del backend, revisado servicio por servicio.
 | S6 | `POST /sync/batch` llama a los servicios **sin el rol del usuario**, así que se saltan todas las validaciones tácticas (F201, F207, triage, bitácora). Es un *bypass* disponible desde ya, no solo en la etapa móvil. Además `form201Service.update` se invoca sin el usuario | `SyncService.processBatch` | ✅ Resuelto |
 | S7 | `POST /action/:id/audio` (adjuntar audio a una acción) sin control de pertenencia | `ActionService.attachAudioToAction` | ✅ Resuelto |
 | S8 | `POST /action/upload-audio` sin `fileFilter` ni `limits`: acepta cualquier archivo de cualquier tamaño en el disco del servidor | `ActionController` (multer) | ✅ Resuelto: 25 MB, lista blanca de formatos, UUID validado antes de tocar el disco |
-| S9 | Dependencias del backend en producción: 4 críticas (transitivas) y 19 altas. Directas con riesgo alto: `multer`, `typeorm`, `@nestjs/platform-express`, `bcrypt`, `nodemailer`, `joi`. **`mongoose` está instalado y no se usa** (el módulo está comentado) | `npm audit --omit=dev` | ✅ multer 2.4 (sin salir de Nest 10). **P1** el resto |
-| S10 | Angular 19: 7 vulnerabilidades altas sin parche en la versión 19. Se corrigen al subir de versión mayor | `pnpm audit --prod` | P1 |
-| S11 | Sin cabeceras de seguridad (`helmet`) y Swagger (`/docs`) expuesto también en producción | `main.ts` | P1 |
+| S9 | Dependencias del backend en producción: 4 críticas (transitivas) y 19 altas. Directas con riesgo alto: `multer`, `typeorm`, `@nestjs/platform-express`, `bcrypt`, `nodemailer`, `joi`. **`mongoose` está instalado y no se usa** (el módulo está comentado) | `npm audit --omit=dev` | ✅ Resuelto: 0 críticas y 0 altas; quedan 11 moderadas de Nest 10 |
+| S10 | Angular 19: 7 vulnerabilidades altas sin parche en la versión 19. Se corrigen al subir de versión mayor | `pnpm audit --prod` | ✅ Resuelto: Angular 21.2 |
+| S11 | Sin cabeceras de seguridad (`helmet`) y Swagger (`/docs`) expuesto también en producción | `main.ts` | ✅ Resuelto |
 | S12 | `POST /checkToken` y `/expiredToken` reciben el token en la *query string*, que queda en los logs de acceso | `AuthController` | P2 |
 | S13 | `GET /data-fire` (módulo en pausa) con CRUD abierto a cualquier usuario autenticado | `DataFireController` | P2 (pausado) |
 
@@ -104,7 +104,7 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | Quién registra: **EACV**, **LUMED** o **CI** (decisión 26) | ✅ | Más `manager`/`admin`. El cargo EACV ya está en el seeder |
 | Totales por color | ✅ | Resumen por clasificación vigente |
 | Totales por destino o medio | ✅ | En la hoja imprimible, según el traslado vigente de cada víctima (una re-evaluación posterior no lo borra) |
-| Datos sensibles con acceso restringido | ❌ | Ver S5 |
+| Datos sensibles con acceso restringido | ✅ | Ver S5 |
 
 ### 3.3 Mando, organización y periodos
 
@@ -129,7 +129,7 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 | B6 | El listado de emergencias no traía el usuario de las asignaciones: `findCommanderName` lanzaba una excepción y la fila quedaba sin Comandante ni Fecha/Hora | Columna Comandante del listado siempre rota | ✅ Resuelto |
 | B7 | Fechas de calendario (F201, F207) mostradas con `DatePipe`, que las interpreta como medianoche UTC | `2026-10-03` se veía `02/10/2026` en UTC-4 | ✅ Resuelto |
 | B3 | KPI "víctimas" del dashboard siempre en 0 (`victimsCount` nunca llega) | Dato falso en pantalla | P2 |
-| B4 | `DELETE /resource/:id` no restituye el stock | Inventario descuadrado | **P0** (ver S3) |
+| B4 | `DELETE /resource/:id` no restituye el stock | Inventario descuadrado | ✅ Resuelto (ver S3) |
 | B5 | La hoja imprimible del 201 no incluye el resumen de acciones | Formulario incompleto respecto al oficial | ✅ Resuelto: página 3 |
 | B8 | El buscador de personal usaba `GET /user` (solo manager+): un CI con rol `basic` no podía asignar personal ni traspasar el mando desde la web | Flujos del CI bloqueados | ✅ Resuelto: `GET /user/directory` para cualquier usuario autenticado, solo con nombre, apellido, grado y disponibilidad (sin correo ni rol) |
 | B9 | Crear un 207 sin lugar de registro devolvía 500 (el DTO lo admite opcional, la columna es NOT NULL) | El móvil u otro cliente no podía abrir un 207 | ✅ Resuelto: ACV por defecto |
@@ -156,16 +156,14 @@ Correcto y verificado: alta y edición de inventario solo para manager+; F201 y 
 
 | Suite | Resultado | Observación |
 |:---|:---|:---|
-| Unitarias backend (Jest) | ✅ 272/272 | |
-| Unitarias front (Karma) | ✅ 451/451 | |
-| E2E de punta a punta (Playwright) | ✅ 17/17 | Base aislada `sci_e2e` |
+| Unitarias backend (Jest) | ✅ 380/380 | Al 2026-10-16 |
+| Unitarias front (Karma) | ✅ 524/524 | |
+| E2E de punta a punta (Playwright) | ✅ 31/31 | Base `sci_e2e` y carpeta de archivos propias |
 | **E2E del backend (supertest)** | ❌ **24/49 fallan** | **Desactualizada**: arma módulos a mano con mocks que no siguieron a los servicios (dependencias faltantes, métodos inexistentes en los mocks, reglas que cambiaron). Ya fallaban los 24 antes del 2026-10-03; los 6 que rompieron mis cambios están corregidos. Hoy esta suite no protege nada: hay que repararla o reemplazarla por los E2E de Playwright más tests de integración con BD real |
 
 Deuda técnica relevante:
-- **Almacenamiento no listo para S3.** `IStorageService` expone `getFilePath()` (ruta física) y los audios no lo usan: escriben con `diskStorage` y se leen con `fs` directo. Hace falta una interfaz basada en streams o URLs firmadas y que audios e imágenes pasen por ella (decisión 20).
 - **`synchronize: true` también en producción**, sin migraciones. Es una decisión del proyecto, pero en producción un cambio de entidad puede borrar columnas con datos. Recomiendo como mínimo respaldo automático previo a cada despliegue; idealmente, migraciones.
 - **Fechas guardadas como texto** (`date` y `hour` como `varchar` en emergencias y acciones): complica los reportes por rango (decisión 19) y las zonas horarias.
-- **`mongoose` sin uso** en las dependencias.
 
 ## 7. Preparación para producción (VPS)
 
@@ -182,13 +180,13 @@ Deuda técnica relevante:
 | Pieza | Estado |
 |:---|:---|
 | Subida de audio con idempotencia | ✅ |
-| Sincronización por lotes + conflictos | 🟡 Funciona, pero con el bypass de permisos (S6) |
+| Sincronización por lotes + conflictos | ✅ Con las mismas reglas que la web (S6) |
 | Push FCM | ✅ Integrado (sin probar con dispositivo) |
 | Interfaz `SpeechToTextProvider` intercambiable | ❌ |
 | Cola de procesamiento asíncrono de audios | ❌ |
 | Extracción hacia 201/207 + borradores pendientes de confirmación | ❌ |
 | Flujo de confirmación (autor / CI / LUMED) | ❌ |
-| Storage abstraído (S3) | ❌ Ver §6 |
+| Storage abstraído (S3) | ✅ Por claves; falta el proveedor S3 (P1 #12) |
 
 ## 9. Backlog priorizado sugerido
 
@@ -215,7 +213,6 @@ Deuda técnica relevante:
 - Administración de cargos.
 - Reparar o reemplazar la suite E2E del backend.
 - Fechas como `timestamptz`.
-- Retirar `mongoose`.
 - Primeros reportes (propuesta en [08](./08_reportes_propuesta.md)). Requieren antes guardar las marcas de tiempo que hoy faltan: liberación de personal y cambios de estado de la emergencia.
 
 **P3:** App móvil Flutter y pipeline de IA (Etapa 2).
