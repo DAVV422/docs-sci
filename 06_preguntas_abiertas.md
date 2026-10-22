@@ -20,7 +20,7 @@
 | 14 | Alcance del móvil | **Lo mismo que la web**, más registro offline con sincronización posterior y la entrada por audio |
 | 15 | Dispositivos | **Teléfono personal** por usuario |
 | 16 | Instituciones | **Una sola institución**, sin multitenant |
-| 17 | Unidades | Son recursos individuales, pero eso pertenece al 211: fuera de esta etapa |
+| 17 | Unidades | Son recursos individuales, pero eso pertenece al 211: fuera de esta etapa. **Actualizada por la 31**: se registran vehículos con su carga, sin el 211 completo |
 | 18 | Privacidad de víctimas | Los usuarios `basic` solo ven víctimas de emergencias en las que participaron |
 | 19 | Reportes | **Sí habrá** reportes y estadísticas operativas, **separados** del módulo de incendios |
 | 20 | Infraestructura | **VPS** con HTTPS y respaldos. Audios en el servidor, pero el almacenamiento debe quedar **listo para migrar a S3** |
@@ -34,6 +34,7 @@
 | 28 | Reportes | Base: emergencias (atendidas, activas, reportadas, por tipo…) y participación del personal (emergencias, horas, cargos…). Propuesta completa en [08](./08_reportes_propuesta.md), pendiente de validar |
 | 29 | Comando Unificado | **No por ahora** (2026-10-16): se mantiene un único CI activo por emergencia |
 | 30 | Confirmación del traspaso | **Solo quien entrega** (2026-10-16): el CI saliente marca la lista de transferencia del manual; quien recibe no confirma en el sistema, pero recibe una notificación |
+| 31 | Vehículos e inventario | (2026-10-22) Cada **vehículo** tiene código, tipo, placa, estado y su **carga estándar** (equipo a bordo). Al despacharlo a una emergencia se agrega esa carga (ajustable) y **no puede estar en dos emergencias**; al devolverlo vuelve su equipo. El equipo a bordo **también se puede despachar suelto** (se avisa si deja incompleta la carga). Cada equipo tiene **categoría**, los **tipos de emergencia** en que se usa y la marca de **uso general** (EPP, radios...): el despacho sugiere según eso. La **tripulación** del vehículo no se asigna por ahora. No es el SCI-211 completo (arribo, estado y movimientos de cada recurso) |
 
 ## Preguntas abiertas
 
