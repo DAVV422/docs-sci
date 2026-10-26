@@ -113,16 +113,12 @@ curl -s http://127.0.0.1:3000/api/config/public   # {"timezone":"America/La_Paz"
 
 ## 4. Front
 
-El front se compila con la URL de la API y la clave de Google Maps. Como se sirve en el mismo dominio, las URLs son relativas. En `src/environments/environment.ts` **del servidor** (no se sube al repositorio):
+El front se compila con la URL de la API y la clave de Google Maps. Como se sirve en el mismo dominio, las URLs son relativas. En `src/environments/environment.ts` del servidor, `apiUrl: '/api'` y `socketUrl: '/notifications'`.
 
-```ts
-export const environment = {
-  production: true,
-  apiUrl: '/api',
-  socketUrl: '/notifications',
-  googleMapsApiKey: 'CLAVE_RESTRINGIDA_AL_DOMINIO',
-  userPasswordRequired: true,
-};
+La clave **no** se escribe en ese archivo: `npm run build` (y `npm start`) ejecutan `scripts/set-env.mjs`, que la toma de la variable `GOOGLE_API_KEY` o del archivo `front-sci/.env` y genera `src/environments/google-maps-key.generated.ts`. Ambos están en `.gitignore`:
+
+```bash
+echo 'GOOGLE_API_KEY=CLAVE_RESTRINGIDA_AL_DOMINIO' | sudo -u sci tee /opt/sci/front-sci/.env
 ```
 
 La clave de Google Maps siempre queda visible en el navegador: debe estar **restringida por dominio** (referentes HTTP `https://sci.ejemplo.bo/*`) y solo a la *Maps JavaScript API*, desde la consola de Google Cloud.

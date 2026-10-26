@@ -35,6 +35,7 @@
 | 29 | Comando Unificado | **No por ahora** (2026-10-16): se mantiene un único CI activo por emergencia |
 | 30 | Confirmación del traspaso | **Solo quien entrega** (2026-10-16): el CI saliente marca la lista de transferencia del manual; quien recibe no confirma en el sistema, pero recibe una notificación |
 | 31 | Vehículos e inventario | (2026-10-22) Cada **vehículo** tiene código, tipo, placa, estado y su **carga estándar** (equipo a bordo). Al despacharlo a una emergencia se agrega esa carga (ajustable) y **no puede estar en dos emergencias**; al devolverlo vuelve su equipo. El equipo a bordo **también se puede despachar suelto** (se avisa si deja incompleta la carga). Cada equipo tiene **categoría**, los **tipos de emergencia** en que se usa y la marca de **uso general** (EPP, radios...): el despacho sugiere según eso. La **tripulación** del vehículo no se asigna por ahora. No es el SCI-211 completo (arribo, estado y movimientos de cada recurso) |
+| 32 | Datos obligatorios | (2026-10-25) **Al registrar casi nada es obligatorio**: la emergencia solo necesita fecha y hora (precargadas; sin nombre ni tipo toma "&lt;Tipo&gt; EMG-012" y "Sin clasificar"); el 201, la evaluación inicial (con al menos un dato) y el 207 se guardan incompletos. **Al finalizar la emergencia** se exige: tipo y lugar, la evaluación inicial (peligro, severidad y descripción) y cada 201 completo; el sistema dice qué falta y lleva a completarlo |
 
 ## Preguntas abiertas
 
