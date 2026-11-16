@@ -15,6 +15,9 @@ dejaba cinco preguntas abiertas.
 | 6 | **La contraseña que asigna el administrador se cambia en el primer ingreso** | Marca en la base, guard que bloquea el resto del sistema y pantalla intermedia (§5). Tiene efectos sobre las pruebas y la demostración: ver §5.1 |
 | 7 | La pantalla de auditoría la ve **solo `suadmin`** | Un `admin` no verá los cambios de rol ni de correo |
 | 8 | El distrito es **texto libre** en esta primera versión | No depende del municipio. Se puede endurecer después sin perder lo registrado |
+| 9 | Los usuarios **que ya existen no** cambian su contraseña | La marca se enciende solo para los que se creen desde ahora |
+| 10 | **El administrador no puede cambiar la contraseña de otra persona.** Solo asigna la inicial al crear la cuenta | Se quita `password` del camino de edición (§5.2). Trae una consecuencia operativa: ver la duda 1 de §10 |
+| 11 | La auditoría registra **solo ediciones**, no consultas. Y quién exporta reportes en PDF | Las consultas de datos de víctimas quedan fuera (§7) |
 
 ### Lo que la decisión 1 cambia en el plan
 
@@ -91,8 +94,8 @@ Lo que **sí** se mantiene del bloque es 1.1, porque la API todavía admite crea
 
 | # | Qué | Detalle |
 |:-:|:---|:---|
-| 3.6 | Columna `must_change_password` en `user` | Migración, por defecto `false` para no alterar a nadie al aplicarla |
-| 3.7 | **Cuándo se enciende**: al crear un usuario con contraseña asignada por un administrador, y cuando un administrador le cambia la contraseña a otra persona | `UserService.createUser` y `update` |
+| 3.6 | Columna `must_change_password` en `user` | Migración, por defecto `false`: los usuarios que ya existen no cambian nada (decisión 9) |
+| 3.7 | **Cuándo se enciende**: solo al crear un usuario con contraseña asignada por un administrador | `UserService.createUser`. Ya no hay un segundo caso, porque el administrador no puede cambiar contraseñas (decisión 10) |
 | 3.8 | **Cuándo se apaga**: al cambiarla uno mismo (3.1), al restablecerla por "olvidé mi contraseña" y al activar la cuenta | En los tres casos la eligió la persona, no un tercero |
 | 3.9 | **Guard que bloquea el sistema** mientras la marca esté encendida, devolviendo un código propio para que el front sepa a dónde llevar | Deja pasar solo `PATCH /user/me/password`, `GET /user/me`, el cierre de sesión, la renovación de token y `/config/public`. Sin el guard, bastaría usar la API para saltarse el cambio y dejar viva la contraseña que conoce el administrador |
 | 3.10 | Exponer la marca en el `UserDTO` que devuelve el login | Hoy el DTO no la tiene, y el front la necesita para redirigir |
@@ -116,6 +119,17 @@ Esto es lo que convierte una función pequeña en media jornada de pruebas rotas
 Por eso `CreateUserDto` recibe `mustChangePassword` opcional: **el valor por defecto es `true`**
 cuando un administrador asigna la contraseña, y la preparación de pruebas, el seeder de demostración
 y el seeder inicial pasan `false` explícitamente.
+
+### 5.2 Quitar al administrador la potestad de cambiar contraseñas (decisión 10)
+
+| # | Qué | Detalle |
+|:-:|:---|:---|
+| 3.12 | Quitar `password` de `UpdateUserDto` y del camino de edición | `UserService.update` deja de aceptarlo. El administrador sigue asignando la contraseña inicial **al crear** la cuenta, nada más |
+| 3.13 | Las sesiones se cierran al cambiar la contraseña uno mismo y al consumir el token de recuperación | Lo segundo ya lo hace; lo primero entra con 3.3 |
+
+Con esto, la contraseña de una persona solo la conocen esa persona y, una única vez, quien creó la
+cuenta —y además está obligada a cambiarla en el primer ingreso—. A partir de ahí nadie más la conoce
+ni puede reemplazarla.
 
 ## 6. Bloque 4 — Marcas de tiempo
 
@@ -145,7 +159,8 @@ historial de triage). **No hay ninguno de las acciones administrativas.**
 | # | Qué | Detalle |
 |:-:|:---|:---|
 | 5.1 | Tabla `audit_log` | `actor_user_id`, `actor_name`, `action`, `entity`, `entity_id`, `before`, `after` (solo los campos que cambian, nunca contraseñas ni tokens), `ip`, `trace_id`, `occurred_at` |
-| 5.2 | Eventos a cubrir | Alta, edición y baja de usuario; cambio de rol; cambio de correo; cambio de contraseña propia; reenvío de invitación; cambio de institución; alta y baja de cargos; e inicios de sesión fallidos |
+| 5.2 | Eventos a cubrir: **solo ediciones**, no consultas (decisión 11) | Alta, edición y baja de usuario; cambio de rol; cambio de correo; cambio de contraseña propia; cambio de institución; alta y baja de cargos; e inicios de sesión fallidos |
+| 5.2b | **Quién exporta reportes en PDF** (decisión 11) | Las hojas del 201 y del 207 se generan en el navegador, así que no hay petición que registrar: hace falta que la pantalla de impresión avise al abrirse. Es el único caso de "consulta" que se audita, y se registra la intención de exportar, no la lectura de los datos |
 | 5.3 | **Purga al año** | Tarea programada que borra lo anterior a 12 meses. Sin ella la tabla crece para siempre |
 | 5.4 | Pantalla de auditoría **solo para `suadmin`** (decisión 7) | Filtros por actor, acción y rango de fechas. Un `admin` no la ve, porque la tabla incluye cambios de rol y de correo hechos por otros administradores |
 | 5.5 | Documentar el `traceId` para soporte | El filtro de excepciones ya lo devuelve en cada error: basta pedir "dime el código que aparece en el mensaje" para encontrar la petición exacta |
@@ -176,22 +191,16 @@ conviene correr las tres suites completas antes de darlo por cerrado.
 
 ## 10. Dudas que quedan
 
-Las tres anteriores quedaron resueltas (decisiones 6, 7 y 8). Estas aparecieron al detallar el
-cambio obligatorio:
+Todas las anteriores quedaron resueltas (decisiones 6 a 11). Queda una sola, que es consecuencia de
+la decisión 10:
 
-1. **¿Los usuarios que ya existen deben cambiar su contraseña también?** La decisión 2 dice dejarlos
-   como están, pero el problema que resuelve el cambio obligatorio —que el administrador conoce la
-   contraseña de todos— les aplica exactamente igual, y hoy son *todos* los usuarios que hay.
-   **Recomendación:** encender la marca a los usuarios reales en la misma migración (son los tres
-   administradores de institución) y **no** a los de demostración, cuya razón de existir es una
-   contraseña compartida para mostrar el sistema.
-2. **¿Cambiarle la contraseña a alguien debe cerrar su sesión activa?** Hoy `PATCH /user/:id` no
-   revoca sesiones: esa persona seguiría trabajando con la sesión abierta, pero bloqueada por el
-   guard de 3.9. **Recomendación:** revocar también sus sesiones, para que no quede a medio camino.
-   El efecto a tener en cuenta es que, si ocurre mientras está atendiendo una emergencia, la saca en
-   ese momento; en la práctica un administrador cambia una contraseña justo porque la persona **no**
-   puede entrar.
-3. **¿La auditoría registra también las consultas de datos de víctimas?** No solo quién los cambió,
-   sino quién los miró. Es información de salud con acceso restringido, y ante un reclamo "quién vio
-   esta ficha" puede importar más que "quién la editó". El costo es volumen: son muchas más filas que
-   las acciones administrativas. Se puede dejar para una segunda vuelta.
+1. **Si el administrador no puede cambiar contraseñas, ¿cómo vuelve a entrar quien olvidó la suya y
+   no tiene correo?** Es el escenario que justifica tener la invitación apagada: personal de
+   emergencia sin un buzón que revise. Con la decisión 10 tal como está, esa persona queda fuera para
+   siempre y hay que borrarla y volver a crearla.
+
+   **Recomendación:** una acción del administrador de "generar contraseña temporal" que produce una
+   **aleatoria**, la muestra una sola vez en pantalla y enciende la marca de cambio obligatorio. No
+   es lo mismo que hoy: el administrador nunca elige la contraseña ni conoce la definitiva, solo
+   entrega una de un solo uso. Mantiene el espíritu de la decisión 10 y conserva la salida de
+   emergencia. Si prefieres que no exista ninguna, el procedimiento pasa a ser recrear la cuenta.
