@@ -1,140 +1,146 @@
-# 11 — Plan: activación de cuentas, marcas de tiempo y auditoría (2026-11-16)
+# 11 — Plan de implementación: cuentas, marcas de tiempo y auditoría (2026-11-16)
 
-Tres trabajos independientes que se pueden hacer en cualquier orden. Antes del plan, las respuestas a
-las preguntas sobre la activación, porque cambian lo que hay que construir.
+Plan ejecutable, con las decisiones ya tomadas. Reemplaza la versión anterior de este documento, que
+dejaba cinco preguntas abiertas.
 
-## 1. Cómo funciona hoy la activación
+## 1. Decisiones tomadas
 
-**¿Cuándo se envía el correo de activación?** Al **crear el usuario**, y solo si queda **inactivo**.
+| # | Decisión | Consecuencia |
+|:-:|:---|:---|
+| 1 | **La invitación por correo queda apagada** (`REQUIRE_EMAIL_ACTIVATION=false`). El administrador crea al usuario con una contraseña y se la entrega | No se envía ningún correo de activación. Toda la interfaz de activación es interfaz para un flujo apagado: se retira en lugar de construirse (ver §4) |
+| 2 | Los usuarios ya creados **se quedan como están**, activos | Sin migración de cuentas |
+| 3 | Zona administrativa: **departamento, municipio y distrito** | Tres campos (§6) |
+| 4 | Catálogo de tipos de emergencia: crece solo con autocompletado, y un administrador puede fusionar duplicados | Mismo patrón que `health_facility` |
+| 5 | La auditoría se guarda **un año** | Hace falta una tarea de purga (§7) |
 
-**¿Y cuándo queda inactivo?** Depende de `REQUIRE_EMAIL_ACTIVATION`. Hoy está en `false` en las tres
-copias del servidor, así que los usuarios se crean **activos** y **no se envía ningún correo de
-activación**. Nunca. Ese es el detalle que faltaba: el enlace del login *¿Aún no activas tu cuenta o
-expiró tu enlace?* lleva a una pantalla que, con la configuración actual, siempre responderá que la
-cuenta ya está activa.
+### Lo que la decisión 1 cambia en el plan
 
-El administrador puede forzar el flujo mandando `isActive: false` al crear, pero desde la pantalla de
-usuarios no hay forma de elegirlo.
+Que la invitación quede apagada tiene una consecuencia que conviene decir en voz alta: **el
+administrador conoce la contraseña de todas las personas**, porque él las asigna. Mientras no exista
+forma de cambiarla uno mismo, esa contraseña sigue siendo conocida por un tercero para siempre.
 
-**¿Se puede reenviar?** Sí, pero es **autoservicio**: el propio usuario entra a `/resend-activation` y
-escribe su correo. El administrador no lo tiene en la pantalla de usuarios, y es él quien va a
-recibir la queja.
+Por eso **el cambio de contraseña desde el perfil (§5) deja de ser una comodidad y pasa a ser
+necesario**. Era lo que faltaba en el panel de perfil.
 
-**¿Se puede corregir el correo?** Sí, el administrador ya puede cambiarlo con `PATCH /user/:id`.
-**Pero no invalida el token anterior ni manda el correo a la dirección nueva.**
+## 2. Verificaciones hechas
 
-### Aquí hay un agujero de seguridad
+**La recuperación de contraseña funciona de punta a punta.** Probada en la base de desarrollo contra
+la API real, con el enlace leído del registro del servidor (sin enviar correos): la solicitud
+responde 200, el enlace se genera, el token válido cambia la contraseña, se entra con la nueva, la
+anterior deja de servir y el token no se puede reutilizar. Las seis comprobaciones pasan.
 
-Si el administrador escribe `juan@gmai.com` en lugar de `juan@gmail.com`, y alguien controla ese
-dominio, esa persona recibe un enlace **válido durante 72 horas** para fijar la contraseña de una
-cuenta real del sistema. Corregir el correo hoy **no revoca ese enlace**. El dueño del buzón
-equivocado sigue pudiendo entrar.
+Dos cosas que descubrí al probarlo:
 
-La buena noticia: **el mecanismo de revocación ya existe**. `AuthTokenService.createToken` llama a
-`revokeUnusedTokens(userId, tipo)` antes de emitir uno nuevo, así que cada token nuevo mata al
-anterior. Lo único que falta es **disparar la emisión cuando cambia el correo**.
+- **Ningún test cubría el camino feliz.** El E2E `13-edit-and-recovery` solo prueba tokens
+  inventados y que la respuesta sea idéntica exista o no la cuenta. Que el restablecimiento
+  *funcione* no estaba verificado por nada. Entra en el plan como T-1.
+- **La política de contraseñas es inconsistente:** activar cuenta exige 6 caracteres, restablecer
+  exige 8, crear usuario 6. Debería ser una sola regla.
 
-**Respuesta corta a "dime si se puede soportar eso": sí, todo, y la mayor parte de la maquinaria ya
-está escrita.** Falta conectarla y darle pantalla.
+**El perfil no permite cambiar la contraseña, y no es solo la pantalla:** `UserService.updateProfile`
+no acepta el campo y no existe ningún endpoint para que una persona cambie su propia contraseña. Hoy
+solo puede hacerlo el administrador por ella, o pasando por "olvidé mi contraseña".
 
-## 2. Parte A — Activación de cuentas
+## 3. Bloque 1 — Arreglos chicos
 
-| # | Qué | Dónde | Tamaño |
-|:-:|:---|:---|:-:|
-| A-1 | **Elegir el modo al crear el usuario**, en lugar del interruptor global: "enviar invitación por correo" o "asignar contraseña ahora". El segundo sigue siendo necesario: hay personal de emergencia sin correo que revise | Front (`user-form-modal`) + DTO del back | M |
-| A-2 | **Cambiar el correo de un usuario no activado** emite un token nuevo (lo que revoca el anterior) y envía la invitación a la dirección nueva, todo en una transacción. Si el usuario ya está activo, el cambio de correo no toca ningún token | `UserService.update` | **S** |
-| A-3 | **Reenviar la invitación desde la pantalla de usuarios**: `POST /user/:id/resend-activation`, solo admin+. Distinto del público: identifica por id, no por correo, y puede responder con detalle porque quien llama ya está autenticado | Back + front | S |
-| A-4 | **Columna de estado en la tabla de usuarios**: "Activo", "Pendiente de activación" con la fecha de vencimiento del enlace, "Enlace expirado". Hoy la tabla no muestra nada de esto y el administrador no puede saber quién no entró nunca | Front (`users-table`) | M |
-| A-5 | Acciones contextuales en la fila: "Reenviar invitación" y "Corregir correo" visibles **solo** si está pendiente | Front | S |
-| A-6 | **Cerrar la fuga de enumeración** del endpoint público: hoy responde 404 "Usuario no encontrado" si el correo no existe y 400 "ya está activa" si lo está, así que sirve para averiguar qué correos están registrados. Debe responder siempre igual, como ya hace `forgot-password` | `AuthService.resendActivationEmail` | **S** |
-| A-7 | Decir en el correo **cuánto vale el enlace** (72 h por defecto) y qué hacer si expiró | Plantilla de correo | S |
+Todos independientes entre sí y pequeños. Se pueden hacer y probar de una sola vez.
 
-Nada de esto necesita migración de base de datos: `auth_token` ya tiene tipo, vencimiento, `is_used`
-y el hash del token.
+| # | Qué | Dónde |
+|:-:|:---|:---|
+| 1.1 | **Cambiar el correo de un usuario no activado emite un token nuevo** (lo que revoca el anterior) y envía la invitación a la dirección nueva, en una transacción. Si el usuario ya está activo, no toca ningún token. Cierra el agujero: hoy, corregir un correo mal escrito deja el enlace anterior válido 72 h en el buzón equivocado | `UserService.update` |
+| 1.2 | **Retirar la opción de reenviar activación del login**: el enlace, la pantalla `/resend-activation` y sus rutas | `login.component.html`, `features/auth/resend-activation/`, `auth.routes.ts` |
+| 1.3 | **Eliminar el endpoint público `POST /resend-activation`**. Además de quedar sin uso, filtra qué correos están registrados (404 si no existe, 400 si ya está activa, 200 si lo manda). Se cierra la fuga borrándolo, no parcheándolo | `auth.controller.ts`, `auth.service.ts`, DTO |
+| 1.4 | **Eliminar `POST /checkToken` y `POST /expiredToken`**. El front no los usa y reciben el token por *query string*, donde queda escrito en los registros de acceso del proxy | `auth.controller.ts`, `auth.service.ts` |
+| 1.5 | **Una sola política de contraseña**, mínimo 8 caracteres, en un decorador compartido para activación, restablecimiento, creación y cambio propio | DTOs de `auth` y `user` |
+| 1.6 | **Dejar de filtrar el mensaje crudo de PostgreSQL al cliente.** `handlerError` devuelve `error.detail` tal cual: el usuario ve *"Key (email)=(juan@x.com) already exists"*, en inglés, con nombres de columnas y el correo de otra persona. Traducir por código de error a mensajes en español | `handlerError.utils.ts` |
+| 1.7 | **Identidad del usuario en los registros**: añadir `userId` y `role` a cada petición registrada, junto al `traceId` que ya existe. Sin esto no se puede auditar nada a partir de los logs | `logger.config.ts`, `TraceIdMiddleware` |
+| 1.8 | **Niveles de registro correctos**: 4xx → `warn`, 5xx → `error`. Hoy todo se registra como `error`, incluidos los 401 y 404 que son funcionamiento normal, y los fallos de verdad quedan sepultados | `http-exception.filter.ts` |
+| 1.9 | **Completar el enmascarado**. Hoy solo se ocultan `authorization` y `req.body.password`. Añadir `token`, `refreshToken`, `newPassword`, `req.query.token` y `req.headers.cookie` | `logger.config.ts` |
+| 1.10 | **`LOG_LEVEL` configurable** por entorno, para subir el detalle sin recompilar | `logger.config.ts`, `.env.example`, `compose.yml` |
+| 1.11 | **Rotación de los logs de Docker**: `logging: driver: json-file, max-size: 10m, max-file: 5` en el bloque compartido. Hoy crecen sin límite y pueden llenar el disco del VPS, tumbando las tres copias a la vez | `infra/compose.yml` |
 
-## 3. Parte B — Marcas de tiempo
+## 4. Bloque 2 — Activación: lo que se aplaza
 
-Lo urgente no es construir reportes, es **empezar a guardar los momentos**, porque la historia no se
-reconstruye después. El patrón a seguir ya existe en el proyecto: `organization_change`, que se
-alimenta con un **trigger en la base**. Así queda registrado venga el cambio de la web, del traspaso
-de mando o de la sincronización del móvil, sin tener que acordarse en cada servicio.
+Con la invitación apagada, esto **no se construye ahora**. Queda anotado para el día que se encienda,
+porque el análisis ya está hecho:
+
+- Elegir al crear el usuario entre "enviar invitación" y "asignar contraseña ahora".
+- `POST /user/:id/resend-activation` solo para admin+, y el botón en la fila del usuario.
+- Columna de estado en la tabla de usuarios: Activo / Pendiente con vencimiento / Enlace expirado.
+- Decir en el correo cuánto vale el enlace.
+
+Lo que **sí** se mantiene del bloque es 1.1, porque la API todavía admite crear un usuario con
+`isActive: false` y conviene que ese camino sea seguro aunque hoy no se use.
+
+## 5. Bloque 3 — Cambiar la contraseña propia
+
+| # | Qué | Detalle |
+|:-:|:---|:---|
+| 3.1 | `PATCH /user/me/password`, endpoint propio en lugar de sumarlo a `updateProfile` | Recibe la **contraseña actual** y la nueva. Exigir la actual es lo que impide que una sesión robada cambie la contraseña y deje al dueño fuera |
+| 3.2 | Verificar la actual, aplicar la política de 1.5 y rechazar que la nueva sea igual a la actual | |
+| 3.3 | **Revocar las demás sesiones** al cambiarla, como ya hace el restablecimiento | `refresh_token` → `isRevoked` |
+| 3.4 | Registrar el evento en la auditoría (§7), sin ninguna contraseña | |
+| 3.5 | Sección "Seguridad" en el perfil: actual, nueva, confirmación, con las reglas a la vista y aviso de que se cerrarán las otras sesiones | `features/profile` |
+
+## 6. Bloque 4 — Marcas de tiempo
+
+El patrón a seguir ya existe en el proyecto: `organization_change`, alimentado por un **trigger en la
+base**. Así queda registrado venga el cambio de la web, del traspaso de mando o de la sincronización
+del móvil, sin tener que acordarse en cada servicio. Cada migración rellena además lo ya existente.
 
 | # | Qué | Cómo | Tamaño |
 |:-:|:---|:---|:-:|
-| B-1 | **Cambios de estado de la emergencia** (reportada → activa → finalizada / cancelada) | Tabla `emergency_state_change` (`emergency_id`, `from_state`, `to_state`, `user_id`, `user_name`, `reason`, `occurred_at`) + trigger `AFTER UPDATE ON emergency` cuando cambia `state`. Relleno inicial: `created_at` como "reportada"; el estado actual con `updated_at` como aproximación, marcado como tal | **M** |
-| B-2 | **Hora de primer arribo a la escena** | Columna `first_arrival_at` en `emergency`, nulable y editable mientras esté abierta, con un botón "Marcar arribo" en el Centro de Mando. Explícito y no derivado: la primera asignación se registra desde la central, que no sabe cuándo llegó la unidad | M |
-| B-3 | **Fecha de cada devolución de recursos** | Tabla `resource_return` (`resource_id`, `amount`, `user_id`, `occurred_at`). **No una columna**: las devoluciones ya pueden ser parciales y varias, así que un solo `returned_at` mentiría. De paso queda el rastro de quién devolvió qué | M |
-| B-4 | **Zona administrativa** (municipio / distrito) | Columnas en `emergency` con autocompletado que se alimenta de lo ya registrado, el mismo patrón que `health_facility`: se crea sobre la marcha y no distingue tildes ni mayúsculas | M |
-| B-5 | **Catálogo de tipos de emergencia** | Tabla `emergency_type` con el mismo patrón, y migración que mapee los valores de texto libre existentes. Hoy `type` es `varchar(50)` libre con sugerencias solo en el front, así que "Incendio" e "incendio forestal" no agrupan y cualquier estadística por tipo sale mal | **M** |
-| B-6 | **Historial de disponibilidad del personal** | Tabla `user_availability_change` + trigger sobre `user.is_operational` | S |
+| 4.1 | **Cambios de estado de la emergencia** | Tabla `emergency_state_change` (`emergency_id`, `from_state`, `to_state`, `user_id`, `user_name`, `reason`, `occurred_at`) + trigger `AFTER UPDATE ON emergency` cuando cambia `state`. Relleno: `created_at` como "reportada" y el estado actual con `updated_at`, marcado como aproximado | M |
+| 4.2 | **Catálogo de tipos de emergencia** | Tabla `emergency_type` con autocompletado que no distingue tildes ni mayúsculas, más fusión de duplicados para admin+. Migración que mapee los valores de texto libre existentes. Hoy `type` es `varchar(50)` libre y "Incendio" e "incendio forestal" no agrupan | M |
+| 4.3 | **Zona administrativa** | `department`, `municipality`, `district` en `emergency`. Departamento con lista fija (son nueve); municipio y distrito con autocompletado que crece solo | M |
+| 4.4 | **Hora de primer arribo** | `first_arrival_at` en `emergency`, nulable, editable mientras esté abierta, con un botón "Marcar arribo" en el Centro de Mando. Explícito y no derivado: la asignación la hace la central, que no sabe cuándo llegó la unidad | M |
+| 4.5 | **Fecha de cada devolución de recursos** | Tabla `resource_return` (`resource_id`, `amount`, `user_id`, `occurred_at`). **Tabla y no columna**: las devoluciones ya pueden ser parciales y varias, así que un solo `returned_at` mentiría | M |
+| 4.6 | **Historial de disponibilidad del personal** | Tabla `user_availability_change` + trigger sobre `user.is_operational` | S |
 
-Prioridad dentro de la parte B: **B-1, B-5 y B-4 primero**. Son las que más datos pierden cada día y
-las más baratas. B-6 es la que menos urge.
+Orden dentro del bloque: **4.1, 4.2 y 4.3 primero**, que son las que más historia pierden cada día.
 
-## 4. Parte C — Logs y auditoría
+## 7. Bloque 5 — Auditoría
 
-Son **dos cosas distintas** y conviene no mezclarlas:
+**Logs y auditoría son cosas distintas.** Los logs sirven para diagnosticar un fallo y desaparecen con
+la rotación; la auditoría responde "quién hizo esto" y tiene que durar un año en la base.
 
-- **Logs**: para diagnosticar un fallo. Viven en Docker, rotan y desaparecen.
-- **Auditoría**: para responder "quién hizo esto". Tiene que estar en la base y poder consultarse
-  meses después.
+Hoy el rastro existe solo para el dominio de la emergencia (bitácora, historial de la organización,
+historial de triage). **No hay ninguno de las acciones administrativas.**
 
-Hoy existe lo segundo solo para el dominio de la emergencia (la bitácora, `organization_change`, el
-historial de triage). **No hay ningún rastro de las acciones administrativas**: quién cambió un rol,
-quién cambió un correo, quién borró a un usuario, quién cambió el nombre de la institución. Con tres
-instituciones y datos reales, eso es justo lo que se necesita después de un incidente.
+| # | Qué | Detalle |
+|:-:|:---|:---|
+| 5.1 | Tabla `audit_log` | `actor_user_id`, `actor_name`, `action`, `entity`, `entity_id`, `before`, `after` (solo los campos que cambian, nunca contraseñas ni tokens), `ip`, `trace_id`, `occurred_at` |
+| 5.2 | Eventos a cubrir | Alta, edición y baja de usuario; cambio de rol; cambio de correo; cambio de contraseña propia; reenvío de invitación; cambio de institución; alta y baja de cargos; e inicios de sesión fallidos |
+| 5.3 | **Purga al año** | Tarea programada que borra lo anterior a 12 meses. Sin ella la tabla crece para siempre |
+| 5.4 | Pantalla de auditoría para admin+ | Filtros por actor, acción y rango de fechas |
+| 5.5 | Documentar el `traceId` para soporte | El filtro de excepciones ya lo devuelve en cada error: basta pedir "dime el código que aparece en el mensaje" para encontrar la petición exacta |
+| 5.6 | Registros estructurados | Pasar de interpolar texto (`email=${email}`) a campos, al menos en autenticación y usuarios, para poder filtrar por `userId` o por tipo de evento |
 
-### Lo que está mal hoy
+## 8. Pruebas
 
-| # | Problema | Por qué importa | Tamaño |
-|:-:|:---|:---|:-:|
-| C-1 | **Las peticiones se registran sin saber quién las hizo.** Hay `traceId` pero no `userId` | Sin esto no se puede auditar nada a partir de los logs | **S** |
-| C-2 | **Se filtra el mensaje crudo de PostgreSQL al cliente.** `handlerError` devuelve `error.detail` tal cual: el usuario ve *"Key (email)=(juan@x.com) already exists"*, en inglés y exponiendo nombres de columnas y datos de otros | Mal mensaje para el usuario y revelación de información. Hay que traducirlo a mensajes en español por tipo de error | **S** |
-| C-3 | **Todo se registra como `error`**, incluidos los 401 y 404 que son parte del funcionamiento normal | Los fallos de verdad quedan sepultados entre el ruido. 4xx → `warn`, 5xx → `error` | **S** |
-| C-4 | **Enmascarado incompleto**: solo se ocultan `authorization` y `req.body.password`. Quedan al descubierto `token`, `refreshToken`, las contraseñas nuevas del restablecimiento y el token que `checkToken` recibe por *query string* | Credenciales en texto plano en los registros del servidor | **S** |
-| C-5 | **Nivel de log fijo**, sin `LOG_LEVEL` | No se puede subir el detalle para diagnosticar sin recompilar | S |
-| C-6 | **Los logs de Docker crecen sin límite**: el `compose.yml` no tiene `logging` | Llenan el disco del VPS y tumban las tres copias a la vez. Junto con el monitoreo de disco pendiente, es el riesgo operativo más tonto que queda | **S** |
-| C-7 | Los mensajes se arman interpolando texto (`email=${email}`) en lugar de campos estructurados | Con campos se puede filtrar por `userId` o por tipo de evento; con texto, solo buscar a ciegas | M |
-| C-8 | Los correos se escriben en claro en los logs | Dato personal en los registros. Para auditoría puede justificarse, pero debe ser una decisión tomada, no un descuido | S |
+| # | Qué |
+|:-:|:---|
+| T-1 | **E2E del camino feliz de la recuperación**: solicitar, usar el enlace, entrar con la nueva, que la anterior falle y que el token no se reutilice. Hoy no lo cubre nada |
+| T-2 | E2E del cambio de contraseña desde el perfil, incluido que cierre las otras sesiones |
+| T-3 | Unitarias de 1.1 (cambiar el correo revoca el token anterior) y 1.6 (los errores de PostgreSQL no se filtran) |
+| T-4 | E2E de que las rutas eliminadas en 1.3 y 1.4 devuelven 404 |
 
-### Lo que hay que añadir
+## 9. Orden de ejecución
 
-| # | Qué | Tamaño |
-|:-:|:---|:-:|
-| C-9 | **Tabla `audit_log`** para acciones administrativas: `actor_user_id`, `actor_name`, `action`, `entity`, `entity_id`, `before`, `after` (solo los campos que cambian, sin contraseñas), `ip`, `trace_id`, `occurred_at`. Eventos a cubrir: alta/edición/baja de usuario, cambio de rol, cambio de correo, activación, reenvío de invitación, cambio de institución, alta/baja de cargos, e inicios de sesión fallidos | **L** |
-| C-10 | **Pantalla de auditoría** para admin+, filtrable por actor, acción y rango de fechas | M |
-| C-11 | Documentar el `traceId` para soporte: el filtro de excepciones ya lo devuelve en cada error, así que basta pedirle al usuario "dime el código que aparece en el mensaje" para encontrar la petición exacta en los logs | S |
+1. **Bloque 1** completo (arreglos chicos) + T-3 y T-4.
+2. **Bloque 3** (cambiar contraseña propia) + T-1 y T-2. Va pronto porque la decisión 1 lo vuelve
+   necesario.
+3. **Bloque 4**, empezando por 4.1, 4.2 y 4.3.
+4. **Bloque 5** (auditoría).
 
-## 5. Orden sugerido
+## 10. Dudas que quedan
 
-**Primero, lo que tapa riesgos y cuesta poco** (todo S, se puede hacer de una vez):
-
-1. **A-2** (cambiar el correo revoca el enlace anterior) — es el agujero de seguridad.
-2. **C-6** (rotación de logs) — evita llenar el disco del VPS.
-3. **C-2** (no filtrar mensajes de PostgreSQL) — seguridad y mensajes decentes.
-4. **C-1, C-3, C-4** (usuario en los logs, niveles correctos, enmascarado completo) — sin esto, nada
-   de lo demás es auditable.
-5. **A-6** (cerrar la enumeración de correos).
-
-**Segundo, las marcas de tiempo**, porque cada día que pasa es historia perdida: **B-1, B-5, B-4**, y
-después B-2, B-3, B-6.
-
-**Tercero, la activación completa**: A-1, A-3, A-4, A-5, A-7. Es un bloque coherente que conviene
-hacer junto y probar de punta a punta con correos reales.
-
-**Cuarto, la auditoría de verdad**: C-9, C-10, C-11, y C-7 de paso.
-
-## 6. Decisiones que hacen falta antes de empezar
-
-1. **¿Se activa la invitación por correo?** Con Resend ya funcionando, la recomendación es que el
-   administrador **elija por usuario** (A-1) en vez de un interruptor global, porque habrá personal
-   sin correo. Si se prefiere simple, basta poner `REQUIRE_EMAIL_ACTIVATION=true` y que todos entren
-   por invitación.
-2. **¿Qué pasa con los usuarios ya creados?** Hoy están todos activos con contraseñas asignadas por
-   el administrador. Se pueden dejar así, o forzar que fijen la suya en el próximo ingreso.
-3. **Zona administrativa (B-4): ¿hasta qué nivel?** Departamento, municipio y distrito, o solo
-   municipio. Depende de los reportes territoriales que se quieran.
-4. **Catálogo de tipos (B-5): ¿quién lo administra?** Lo más práctico es que crezca solo con
-   autocompletado, como los centros de salud, y que un administrador pueda fusionar duplicados.
-5. **¿Cuánto se guarda la auditoría?** Sin un plazo definido, `audit_log` crece para siempre. Un año
-   es lo habitual para este tipo de sistema.
+1. **¿La contraseña que asigna el administrador debe cambiarse en el primer ingreso?** Con la
+   invitación apagada y el cambio propio disponible, se puede **obligar** a cambiarla la primera vez
+   (una marca `must_change_password` y una pantalla intermedia). Es lo que cierra del todo el problema
+   de que el administrador conozca la contraseña de todos. Añade trabajo: dímelo y lo sumo al
+   bloque 3.
+2. **¿La pantalla de auditoría la ve `admin` o solo `suadmin`?** Incluye cambios de rol y de correo
+   de otras personas.
+3. **¿El distrito es texto libre o depende del municipio?** Lo segundo es más correcto y más
+   trabajo; lo primero basta si los reportes territoriales van a ser por municipio.
