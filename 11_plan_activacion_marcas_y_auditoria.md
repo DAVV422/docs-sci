@@ -18,6 +18,7 @@ dejaba cinco preguntas abiertas.
 | 9 | Los usuarios **que ya existen no** cambian su contraseña | La marca se enciende solo para los que se creen desde ahora |
 | 10 | **El administrador no puede cambiar la contraseña de otra persona.** Solo asigna la inicial al crear la cuenta | Se quita `password` del camino de edición (§5.2). Trae una consecuencia operativa: ver la duda 1 de §10 |
 | 11 | La auditoría registra **solo ediciones**, no consultas. Y quién exporta reportes en PDF | Las consultas de datos de víctimas quedan fuera (§7) |
+| 12 | Quien olvida su contraseña la recupera **solo** por «¿Olvidaste tu contraseña?» | Sin contraseñas temporales ni ninguna otra vía: nadie más que la persona recupera el acceso (§10) |
 
 ### Lo que la decisión 1 cambia en el plan
 
@@ -77,10 +78,45 @@ Dos cosas se hicieron distinto de lo planeado, y a mejor:
 | 1.10 | **`LOG_LEVEL` configurable** por entorno, para subir el detalle sin recompilar | `logger.config.ts`, `.env.example`, `compose.yml` |
 | 1.11 | **Rotación de los logs de Docker**: `logging: driver: json-file, max-size: 10m, max-file: 5` en el bloque compartido. Hoy crecen sin límite y pueden llenar el disco del VPS, tumbando las tres copias a la vez | `infra/compose.yml` |
 
-## 4. Bloque 2 — Activación: lo que se aplaza
+## 4. Bloque 2 — Estados de la cuenta ✅ *Hecho el 2026-11-16*
 
-Con la invitación apagada, esto **no se construye ahora**. Queda anotado para el día que se encienda,
-porque el análisis ya está hecho:
+Commit `06b6364` en `back-sci`. **486** pruebas unitarias y **42** E2E en verde.
+
+El bloque cambió de contenido al revisarlo: lo urgente no era construir la interfaz de activación
+(que sigue aplazada, más abajo), sino separar estados que estaban confundidos.
+
+### El problema
+
+`is_active = false` significaba **dos cosas distintas**: una cuenta nueva esperando su invitación y
+una cuenta que un administrador suspendió. Y `findOne` no filtra las eliminadas. Con el arreglo 1.1
+tal como quedó, corregirle el correo a una cuenta suspendida o eliminada **le habría mandado una
+invitación para volver a entrar**; lo mismo el botón de reenviar.
+
+### La regla
+
+"Pendiente de activación" pasa a ser una condición **positiva**, no la ausencia de otra:
+
+```
+NOT is_deleted  AND  NOT is_active  AND  activated_at IS NULL
+```
+
+`user.activated_at` (migración `UserActivatedAt1794300000000`) guarda cuándo entró en funcionamiento
+la cuenta. El relleno sella todas las que hoy funcionan, para que suspender a cualquiera de ellas no
+la haga parecer nueva. Reenviar a una cuenta suspendida explica qué hacer en vez de mandar nada; a
+una eliminada responde como si no existiera, para no confirmar que ahí hubo alguien.
+
+### Dos huecos más, encontrados al revisar esto
+
+- **Eliminar o suspender a alguien no le quitaba el acceso.** El guard no volvía a mirar el estado de
+  la cuenta, así que el token seguía sirviendo hasta expirar (8 h), y la renovación tampoco lo
+  miraba: se podía renovar la sesión indefinidamente. Ahora ambos lo comprueban.
+- **Un enlace de activación de cuando la cuenta existía seguía activándola** aunque ya estuviera
+  eliminada.
+
+### Lo que sigue aplazado
+
+Con la invitación apagada, esto **no se construye todavía**. Queda anotado para el día que se
+encienda, porque el análisis ya está hecho:
 
 - Elegir al crear el usuario entre "enviar invitación" y "asignar contraseña ahora".
 - `POST /user/:id/resend-activation` solo para admin+, y el botón en la fila del usuario.
@@ -203,16 +239,12 @@ conviene correr las tres suites completas antes de darlo por cerrado.
 
 ## 10. Dudas que quedan
 
-Todas las anteriores quedaron resueltas (decisiones 6 a 11). Queda una sola, que es consecuencia de
-la decisión 10:
+Ninguna. Todas quedaron resueltas (decisiones 6 a 12).
 
-1. **Si el administrador no puede cambiar contraseñas, ¿cómo vuelve a entrar quien olvidó la suya y
-   no tiene correo?** Es el escenario que justifica tener la invitación apagada: personal de
-   emergencia sin un buzón que revise. Con la decisión 10 tal como está, esa persona queda fuera para
-   siempre y hay que borrarla y volver a crearla.
+**Decisión 12:** el único camino para quien olvida su contraseña es **«¿Olvidaste tu contraseña?»**,
+con el enlace que llega por correo. No habrá contraseñas temporales ni ninguna otra vía: nadie más
+que la persona vuelve a tener acceso a su cuenta.
 
-   **Recomendación:** una acción del administrador de "generar contraseña temporal" que produce una
-   **aleatoria**, la muestra una sola vez en pantalla y enciende la marca de cambio obligatorio. No
-   es lo mismo que hoy: el administrador nunca elige la contraseña ni conoce la definitiva, solo
-   entrega una de un solo uso. Mantiene el espíritu de la decisión 10 y conserva la salida de
-   emergencia. Si prefieres que no exista ninguna, el procedimiento pasa a ser recrear la cuenta.
+Consecuencia a tener presente: quien no pueda recibir correo no tiene forma de recuperar el acceso, y
+el procedimiento pasa a ser crear una cuenta nueva. Por eso conviene que los correos de alta sean
+buzones que la persona realmente revise.
