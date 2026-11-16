@@ -17,6 +17,7 @@ La documentación técnica detallada de cada aplicación sigue viviendo en su re
 | [07 — Inspección (2026-10-14)](./07_inspeccion.md) | Qué cumple, qué funciona y qué falta; backlog priorizado |
 | [08 — Reportes (propuesta)](./08_reportes_propuesta.md) | Reportes y estadísticas recomendados, internos y públicos, y los datos que requieren |
 | [09 — Despliegue](./09_despliegue.md) | VPS con HTTPS (Caddy), servicio del backend, front, respaldos y restauración, migraciones, actualización y monitoreo |
+| [10 — Estado y pendientes (2026-11-16)](./10_estado_y_pendientes.md) | Qué falta por etapa y por repositorio, contrastado contra el código, con el orden sugerido |
 | [sistema/](./sistema/README.md) | Documentación técnica unificada (antes duplicada en back y front) |
 | [SCI — Fase básica](./SCI_fase_basica/00_INDICE.md) | Referencia oficial: *Manual de Campo SCI* (USAID/OFDA/LAC, 2013) resumido para el software |
 
