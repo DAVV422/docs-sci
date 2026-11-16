@@ -47,9 +47,21 @@ Dos cosas que descubrí al probarlo:
 no acepta el campo y no existe ningún endpoint para que una persona cambie su propia contraseña. Hoy
 solo puede hacerlo el administrador por ella, o pasando por "olvidé mi contraseña".
 
-## 3. Bloque 1 — Arreglos chicos
+## 3. Bloque 1 — Arreglos chicos ✅ *Hecho el 2026-11-16*
 
-Todos independientes entre sí y pequeños. Se pueden hacer y probar de una sola vez.
+Commits `95ac41d` y `bccbd9a` en `back-sci`, `bb04bb4` en `front-sci`. Pruebas: **472** unitarias del
+backend (eran 452), **623** del front y **42** E2E (era 41), todas en verde.
+
+Dos cosas se hicieron distinto de lo planeado, y a mejor:
+
+- **1.3 no necesitó endpoint de reemplazo nuevo desde cero**: la tabla de usuarios **ya tenía** el
+  botón de reenviar invitación, llamando al endpoint público. Borrarlo sin más habría roto una
+  función existente, así que se creó `POST /user/:id/resend-activation` (solo admin, identifica por
+  id) y se repuntó el botón. La fuga de enumeración se cierra igual, sin perder la función.
+- **1.4 arrastró toda la estrategia de Passport**: `TokenValidatorService`, `JwtStrategy`,
+  `ITokenStrategy` y `PassportModule` solo existían para `checkToken`. Nada usaba el guard de
+  Passport —la autenticación real va por `AuthGuard` con `verifyAccessToken`—, así que se retiró el
+  bloque entero en vez de dejar la mitad muerta.
 
 | # | Qué | Dónde |
 |:-:|:---|:---|
