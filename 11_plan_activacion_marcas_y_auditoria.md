@@ -12,6 +12,9 @@ dejaba cinco preguntas abiertas.
 | 3 | Zona administrativa: **departamento, municipio y distrito** | Tres campos (§6) |
 | 4 | Catálogo de tipos de emergencia: crece solo con autocompletado, y un administrador puede fusionar duplicados | Mismo patrón que `health_facility` |
 | 5 | La auditoría se guarda **un año** | Hace falta una tarea de purga (§7) |
+| 6 | **La contraseña que asigna el administrador se cambia en el primer ingreso** | Marca en la base, guard que bloquea el resto del sistema y pantalla intermedia (§5). Tiene efectos sobre las pruebas y la demostración: ver §5.1 |
+| 7 | La pantalla de auditoría la ve **solo `suadmin`** | Un `admin` no verá los cambios de rol ni de correo |
+| 8 | El distrito es **texto libre** en esta primera versión | No depende del municipio. Se puede endurecer después sin perder lo registrado |
 
 ### Lo que la decisión 1 cambia en el plan
 
@@ -72,7 +75,9 @@ porque el análisis ya está hecho:
 Lo que **sí** se mantiene del bloque es 1.1, porque la API todavía admite crear un usuario con
 `isActive: false` y conviene que ese camino sea seguro aunque hoy no se use.
 
-## 5. Bloque 3 — Cambiar la contraseña propia
+## 5. Bloque 3 — Contraseña propia y cambio obligatorio
+
+### Cambiar la contraseña propia
 
 | # | Qué | Detalle |
 |:-:|:---|:---|
@@ -81,6 +86,36 @@ Lo que **sí** se mantiene del bloque es 1.1, porque la API todavía admite crea
 | 3.3 | **Revocar las demás sesiones** al cambiarla, como ya hace el restablecimiento | `refresh_token` → `isRevoked` |
 | 3.4 | Registrar el evento en la auditoría (§7), sin ninguna contraseña | |
 | 3.5 | Sección "Seguridad" en el perfil: actual, nueva, confirmación, con las reglas a la vista y aviso de que se cerrarán las otras sesiones | `features/profile` |
+
+### Cambio obligatorio en el primer ingreso (decisión 6)
+
+| # | Qué | Detalle |
+|:-:|:---|:---|
+| 3.6 | Columna `must_change_password` en `user` | Migración, por defecto `false` para no alterar a nadie al aplicarla |
+| 3.7 | **Cuándo se enciende**: al crear un usuario con contraseña asignada por un administrador, y cuando un administrador le cambia la contraseña a otra persona | `UserService.createUser` y `update` |
+| 3.8 | **Cuándo se apaga**: al cambiarla uno mismo (3.1), al restablecerla por "olvidé mi contraseña" y al activar la cuenta | En los tres casos la eligió la persona, no un tercero |
+| 3.9 | **Guard que bloquea el sistema** mientras la marca esté encendida, devolviendo un código propio para que el front sepa a dónde llevar | Deja pasar solo `PATCH /user/me/password`, `GET /user/me`, el cierre de sesión, la renovación de token y `/config/public`. Sin el guard, bastaría usar la API para saltarse el cambio y dejar viva la contraseña que conoce el administrador |
+| 3.10 | Exponer la marca en el `UserDTO` que devuelve el login | Hoy el DTO no la tiene, y el front la necesita para redirigir |
+| 3.11 | Pantalla intermedia obligatoria, sin menú ni forma de escapar salvo cerrar sesión | Reutiliza el formulario de 3.5 |
+
+### 5.1 Lo que el cambio obligatorio rompe si no se planifica
+
+Esto es lo que convierte una función pequeña en media jornada de pruebas rotas:
+
+- **Las 41 pruebas E2E se caen.** `front-sci/e2e/global-setup.ts` crea cinco usuarios por la API como
+  administrador y después inicia sesión como ellos. Con la marca encendida por defecto, el guard de
+  3.9 los bloquea a todos. La preparación tiene que pedir `mustChangePassword: false`.
+- **La demostración queda inservible.** `back-sci/scripts/seed-demo.mjs` crea el personal de
+  `demo.emerg-ia.com` con una contraseña compartida y luego entra como ellos. Esos usuarios existen
+  justamente para mostrar el sistema con una contraseña conocida: tienen que quedar exentos.
+- **El superadministrador inicial queda exento**, a propósito. Su contraseña viene de
+  `ADMIN_PASSWORD`, un secreto de despliegue y no una entrega de persona a persona; además el
+  seeder y los scripts de datos entran con ella. Ahí la mitigación correcta es rotar el secreto, no
+  forzar un cambio que rompería la automatización.
+
+Por eso `CreateUserDto` recibe `mustChangePassword` opcional: **el valor por defecto es `true`**
+cuando un administrador asigna la contraseña, y la preparación de pruebas, el seeder de demostración
+y el seeder inicial pasan `false` explícitamente.
 
 ## 6. Bloque 4 — Marcas de tiempo
 
@@ -92,7 +127,7 @@ del móvil, sin tener que acordarse en cada servicio. Cada migración rellena ad
 |:-:|:---|:---|:-:|
 | 4.1 | **Cambios de estado de la emergencia** | Tabla `emergency_state_change` (`emergency_id`, `from_state`, `to_state`, `user_id`, `user_name`, `reason`, `occurred_at`) + trigger `AFTER UPDATE ON emergency` cuando cambia `state`. Relleno: `created_at` como "reportada" y el estado actual con `updated_at`, marcado como aproximado | M |
 | 4.2 | **Catálogo de tipos de emergencia** | Tabla `emergency_type` con autocompletado que no distingue tildes ni mayúsculas, más fusión de duplicados para admin+. Migración que mapee los valores de texto libre existentes. Hoy `type` es `varchar(50)` libre y "Incendio" e "incendio forestal" no agrupan | M |
-| 4.3 | **Zona administrativa** | `department`, `municipality`, `district` en `emergency`. Departamento con lista fija (son nueve); municipio y distrito con autocompletado que crece solo | M |
+| 4.3 | **Zona administrativa** | `department`, `municipality`, `district` en `emergency`. Departamento con lista fija (son nueve); municipio y distrito con autocompletado que crece solo. El distrito es texto libre, sin depender del municipio (decisión 8) | M |
 | 4.4 | **Hora de primer arribo** | `first_arrival_at` en `emergency`, nulable, editable mientras esté abierta, con un botón "Marcar arribo" en el Centro de Mando. Explícito y no derivado: la asignación la hace la central, que no sabe cuándo llegó la unidad | M |
 | 4.5 | **Fecha de cada devolución de recursos** | Tabla `resource_return` (`resource_id`, `amount`, `user_id`, `occurred_at`). **Tabla y no columna**: las devoluciones ya pueden ser parciales y varias, así que un solo `returned_at` mentiría | M |
 | 4.6 | **Historial de disponibilidad del personal** | Tabla `user_availability_change` + trigger sobre `user.is_operational` | S |
@@ -112,7 +147,7 @@ historial de triage). **No hay ninguno de las acciones administrativas.**
 | 5.1 | Tabla `audit_log` | `actor_user_id`, `actor_name`, `action`, `entity`, `entity_id`, `before`, `after` (solo los campos que cambian, nunca contraseñas ni tokens), `ip`, `trace_id`, `occurred_at` |
 | 5.2 | Eventos a cubrir | Alta, edición y baja de usuario; cambio de rol; cambio de correo; cambio de contraseña propia; reenvío de invitación; cambio de institución; alta y baja de cargos; e inicios de sesión fallidos |
 | 5.3 | **Purga al año** | Tarea programada que borra lo anterior a 12 meses. Sin ella la tabla crece para siempre |
-| 5.4 | Pantalla de auditoría para admin+ | Filtros por actor, acción y rango de fechas |
+| 5.4 | Pantalla de auditoría **solo para `suadmin`** (decisión 7) | Filtros por actor, acción y rango de fechas. Un `admin` no la ve, porque la tabla incluye cambios de rol y de correo hechos por otros administradores |
 | 5.5 | Documentar el `traceId` para soporte | El filtro de excepciones ya lo devuelve en cada error: basta pedir "dime el código que aparece en el mensaje" para encontrar la petición exacta |
 | 5.6 | Registros estructurados | Pasar de interpolar texto (`email=${email}`) a campos, al menos en autenticación y usuarios, para poder filtrar por `userId` o por tipo de evento |
 
@@ -124,23 +159,39 @@ historial de triage). **No hay ninguno de las acciones administrativas.**
 | T-2 | E2E del cambio de contraseña desde el perfil, incluido que cierre las otras sesiones |
 | T-3 | Unitarias de 1.1 (cambiar el correo revoca el token anterior) y 1.6 (los errores de PostgreSQL no se filtran) |
 | T-4 | E2E de que las rutas eliminadas en 1.3 y 1.4 devuelven 404 |
+| T-5 | E2E del cambio obligatorio: con la marca encendida el sistema queda bloqueado, y al cambiar la contraseña se desbloquea |
+| T-6 | Que la preparación de los E2E y el seeder de demostración sigan funcionando con la marca (§5.1) |
 
 ## 9. Orden de ejecución
 
 1. **Bloque 1** completo (arreglos chicos) + T-3 y T-4.
-2. **Bloque 3** (cambiar contraseña propia) + T-1 y T-2. Va pronto porque la decisión 1 lo vuelve
-   necesario.
+2. **Bloque 3**, primero el cambio propio (3.1–3.5) con T-1 y T-2, y después el obligatorio
+   (3.6–3.11) con T-5 y T-6. Va pronto porque la decisión 1 lo vuelve necesario, y en ese orden
+   porque el obligatorio se apoya en el formulario del propio.
 3. **Bloque 4**, empezando por 4.1, 4.2 y 4.3.
 4. **Bloque 5** (auditoría).
 
+El bloque 3 es el único con riesgo de arrastre: el guard de 3.9 toca todas las peticiones, así que
+conviene correr las tres suites completas antes de darlo por cerrado.
+
 ## 10. Dudas que quedan
 
-1. **¿La contraseña que asigna el administrador debe cambiarse en el primer ingreso?** Con la
-   invitación apagada y el cambio propio disponible, se puede **obligar** a cambiarla la primera vez
-   (una marca `must_change_password` y una pantalla intermedia). Es lo que cierra del todo el problema
-   de que el administrador conozca la contraseña de todos. Añade trabajo: dímelo y lo sumo al
-   bloque 3.
-2. **¿La pantalla de auditoría la ve `admin` o solo `suadmin`?** Incluye cambios de rol y de correo
-   de otras personas.
-3. **¿El distrito es texto libre o depende del municipio?** Lo segundo es más correcto y más
-   trabajo; lo primero basta si los reportes territoriales van a ser por municipio.
+Las tres anteriores quedaron resueltas (decisiones 6, 7 y 8). Estas aparecieron al detallar el
+cambio obligatorio:
+
+1. **¿Los usuarios que ya existen deben cambiar su contraseña también?** La decisión 2 dice dejarlos
+   como están, pero el problema que resuelve el cambio obligatorio —que el administrador conoce la
+   contraseña de todos— les aplica exactamente igual, y hoy son *todos* los usuarios que hay.
+   **Recomendación:** encender la marca a los usuarios reales en la misma migración (son los tres
+   administradores de institución) y **no** a los de demostración, cuya razón de existir es una
+   contraseña compartida para mostrar el sistema.
+2. **¿Cambiarle la contraseña a alguien debe cerrar su sesión activa?** Hoy `PATCH /user/:id` no
+   revoca sesiones: esa persona seguiría trabajando con la sesión abierta, pero bloqueada por el
+   guard de 3.9. **Recomendación:** revocar también sus sesiones, para que no quede a medio camino.
+   El efecto a tener en cuenta es que, si ocurre mientras está atendiendo una emergencia, la saca en
+   ese momento; en la práctica un administrador cambia una contraseña justo porque la persona **no**
+   puede entrar.
+3. **¿La auditoría registra también las consultas de datos de víctimas?** No solo quién los cambió,
+   sino quién los miró. Es información de salud con acceso restringido, y ante un reclamo "quién vio
+   esta ficha" puede importar más que "quién la editó". El costo es volumen: son muchas más filas que
+   las acciones administrativas. Se puede dejar para una segunda vuelta.
