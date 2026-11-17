@@ -126,7 +126,22 @@ encienda, porque el análisis ya está hecho:
 Lo que **sí** se mantiene del bloque es 1.1, porque la API todavía admite crear un usuario con
 `isActive: false` y conviene que ese camino sea seguro aunque hoy no se use.
 
-## 5. Bloque 3 — Contraseña propia y cambio obligatorio
+## 5. Bloque 3 — Contraseña propia y cambio obligatorio ✅ *Hecho el 2026-11-16*
+
+Commits `a38b08d` en `back-sci` y `7cd27b5` en `front-sci`. Pruebas: **499** unitarias del backend,
+**634** del front y **47** E2E (eran 42), todas en verde.
+
+Decisiones de diseño que se tomaron al implementarlo:
+
+- **Escribir una contraseña tiene un único punto de entrada** en el backend, que siempre apaga la
+  marca y cierra las sesiones. Así los tres caminos —cambio propio, activación y restablecimiento—
+  se comportan igual. Activar y restablecer dejaron de pasar por el `update` de administrador, que
+  ya no acepta contraseñas.
+- **Un solo formulario** para el perfil y la pantalla obligatoria, para que la persona vea
+  exactamente lo mismo en los dos sitios.
+- El guard de sesión de la web lleva a `/change-password` mientras quede pendiente: el backend
+  rechaza todo lo demás, así que navegar solo mostraría pantallas con errores.
+
 
 ### Cambiar la contraseña propia
 
@@ -218,7 +233,7 @@ historial de triage). **No hay ninguno de las acciones administrativas.**
 
 | # | Qué |
 |:-:|:---|
-| T-1 | **E2E del camino feliz de la recuperación**: solicitar, usar el enlace, entrar con la nueva, que la anterior falle y que el token no se reutilice. Hoy no lo cubre nada |
+| T-1 | **Camino feliz de la recuperación**: solicitar, usar el enlace, entrar con la nueva, que la anterior falle y que el token no se reutilice. 🟡 Verificado a mano contra la API real (seis comprobaciones, 16/11/2026) pero **sin automatizar**: el enlace solo existe en el correo, y las pruebas E2E no leen el registro del servidor donde aparece en modo simulado |
 | T-2 | E2E del cambio de contraseña desde el perfil, incluido que cierre las otras sesiones |
 | T-3 | Unitarias de 1.1 (cambiar el correo revoca el token anterior) y 1.6 (los errores de PostgreSQL no se filtran) |
 | T-4 | E2E de que las rutas eliminadas en 1.3 y 1.4 devuelven 404 |
